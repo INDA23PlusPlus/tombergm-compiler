@@ -1,0 +1,29 @@
+<blank>		::= " " | "\t" | "\r" | "\n"
+<spc>		::= <blank> | <blank> <nspc>
+<nspc>		::= E | <spc>
+<alpha>		::= [a-z] | [A-Z]
+<idsym>		::= "_"
+<digit>		::= [0-9]
+<int>		::= <digit> | <digit> <int>
+<idbeg> 	::= <alpha> | <idsym>
+<idchar>	::= <alpha> | <idsym> | <digit>
+<idcont>	::= <idchar> | <idchar> <idcont>
+<id>		::= <idbeg> | <idbeg> <idcont>
+<val>		::= <int> | <id>
+<paren>		::= "(" <expr> ")"
+<sum>		::= <expr> "+" <expr>
+<diff>		::= <expr> "-" <expr>
+<prod>		::= <expr> "*" <expr>
+<quot>		::= <expr> "/" <expr>
+<set>		::= <id> <nspc> "=" <expr>
+<sexpr>		::= <paren> | <val> | <sum> | <diff> | <prod> | <quot> | <set>
+<expr>		::= <nspc> <sexpr> <nspc>
+<fullexpr>	::= <expr> ";" <nspc>
+<print>		::= "print" <expr> ";" <nspc>
+<iff>		::= "if" <nspc> "(" <expr> ")" <stmt>
+<if>		::= <iff> | <iff> "else" <nspc> <stmt>
+<while>		::= "while" <nspc> "(" <expr> ")" <nspc> <stmt>
+<stmt>		::= <print> | <if> | <while> | <fullexpr> | <block>
+<stmtlist>	::= E | <stmt> | <stmt> <stmtlist>
+<block>		::= <nspc> "{" <nspc> <stmtlist> <nspc> "}" <nspc>
+
