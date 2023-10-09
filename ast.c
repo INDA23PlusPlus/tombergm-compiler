@@ -29,6 +29,27 @@ void ast_print(const ast_t *ast)
 		{
 			printf("(%s)", ast_as_id(ast)->id);
 		}			break;
+		case AST_CALL	:
+		{
+			ast_print(ast_as_call(ast)->fn);
+
+			printf("(");
+
+			ast_t *arg = ast_as_call(ast)->arg;
+			while (arg != NULL)
+			{
+				ast_print(arg);
+
+				arg = arg->next;
+
+				if (arg != NULL)
+				{
+					printf(", ");
+				}
+			}
+
+			printf(")");
+		}			break;
 		case AST_SET	:
 		case AST_SUM	:
 		case AST_DIFF	:
@@ -88,6 +109,7 @@ ast_t *ast_new(ast_var_t var)
 	{
 		case AST_CONST	: size = sizeof(ast_const_t);	break;
 		case AST_ID	: size = sizeof(ast_id_t);	break;
+		case AST_CALL	: size = sizeof(ast_call_t);	break;
 		case AST_SET	:
 		case AST_SUM	:
 		case AST_DIFF	:
@@ -128,6 +150,17 @@ ast_id_t *ast_new_id(const char *id)
 	return ast;
 }
 
+ast_call_t *ast_new_call(void)
+{
+	ast_call_t *ast = ast_as_call(ast_new(AST_CALL));
+
+	ast->fn = NULL;
+	ast->arg = NULL;
+	ast->narg = 0;
+
+	return ast;
+}
+
 ast_block_t *ast_new_block(void)
 {
 	ast_block_t *ast = ast_as_block(ast_new(AST_BLOCK));
@@ -163,6 +196,23 @@ void ast_dstr_id(ast_id_t *ast)
 	if (ast->id != NULL)
 	{
 		xfree(ast->id);
+	}
+}
+
+void ast_dstr_call(ast_call_t *ast)
+{
+	if (ast->fn != NULL)
+	{
+		ast_del(ast->fn);
+	}
+
+	while (ast->arg != NULL)
+	{
+		ast_t *next = ast->arg->next;
+
+		ast_del(ast->arg);
+
+		ast->arg = next;
 	}
 }
 
@@ -215,6 +265,7 @@ void ast_dstr(ast_t *ast)
 	{
 		case AST_ID	: return ast_dstr_id(ast_as_id(ast));
 		case AST_BLOCK	: return ast_dstr_block(ast_as_block(ast));
+		case AST_CALL	: return ast_dstr_call(ast_as_call(ast));
 		case AST_IF	: return ast_dstr_if(ast_as_if(ast));
 		case AST_WHILE	: return ast_dstr_while(ast_as_while(ast));
 		default		: return;

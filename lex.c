@@ -81,6 +81,7 @@ static tok_t *lex_sym(const char **sp)
 		case '-'	: var = TOK_MINUS;	break;
 		case '*'	: var = TOK_ASTER;	break;
 		case '/'	: var = TOK_SLASH;	break;
+		case ','	: var = TOK_COMMA;	break;
 		case ';'	: var = TOK_SEMICO;	break;
 		case '('	: var = TOK_LPAREN;	break;
 		case ')'	: var = TOK_RPAREN;	break;

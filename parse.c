@@ -1,5 +1,6 @@
 #include <stddef.h>
 #include "ast.h"
+#include "misc.h"
 #include "tok.h"
 
 static inline int op_left(const tok_t *tok)
@@ -8,7 +9,8 @@ static inline int op_left(const tok_t *tok)
 		tok->var == TOK_PLUS	||
 		tok->var == TOK_MINUS	||
 		tok->var == TOK_ASTER	||
-		tok->var == TOK_SLASH	;
+		tok->var == TOK_SLASH	||
+		tok->var == TOK_COMMA	;
 }
 
 static inline int op_prec(const tok_t *tok)
@@ -49,6 +51,13 @@ static tok_t *tok_pop(tok_t **tokp)
 	return tok;
 }
 
+static inline int is_comma(const tok_t *tok)
+{
+	return
+		tok != NULL		&&
+		tok->var == TOK_COMMA	;
+}
+
 static inline int is_val(const tok_t *tok)
 {
 	return
@@ -68,7 +77,8 @@ static inline int is_op(const tok_t *tok)
 			tok->var == TOK_PLUS	||
 			tok->var == TOK_MINUS	||
 			tok->var == TOK_ASTER	||
-			tok->var == TOK_SLASH
+			tok->var == TOK_SLASH	||
+			tok->var == TOK_COMMA
 		);
 }
 
@@ -84,6 +94,13 @@ static inline int is_rparen(const tok_t *tok)
 	return
 		tok != NULL		&&
 		tok->var == TOK_RPAREN	;
+}
+
+static inline int is_call(const tok_t *tok)
+{
+	return
+		tok != NULL		&&
+		tok->var == TOK_CALL	;
 }
 
 static int should_pop(tok_t **opstk, const tok_t *tok)
@@ -117,11 +134,6 @@ static void do_op(tok_t **opstk, tok_t **outpt, const tok_t *tok)
 
 static int do_rparen(tok_t **opstk, tok_t **outpt)
 {
-	if (is_lparen(*opstk))
-	{
-		return -1;
-	}
-
 	while (*opstk != NULL)
 	{
 		if (is_lparen(*opstk))
@@ -169,6 +181,38 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 		{
 			return &ast_new_id(tok_as_id(tok)->id)->ast;
 		}
+		case TOK_CALL	:
+		{
+			int narg = tok_as_call(tok)->narg;
+
+			ast_call_t *ast = ast_new_call();
+
+			while (ast->narg < tok_as_call(tok)->narg)
+			{
+				ast_t *arg = parse_expr_pn(tokp);
+
+				if (arg == NULL)
+				{
+					break;
+				}
+
+				arg->next = ast->arg;
+				ast->arg = arg;
+
+				ast->narg++;
+			}
+
+			ast->fn = parse_expr_pn(tokp);
+
+			if (ast->narg != narg || ast->fn == NULL)
+			{
+				ast_del(&ast->ast);
+
+				return NULL;
+			}
+
+			return &ast->ast;
+		}
 		case TOK_EQ	:
 		case TOK_PLUS	:
 		case TOK_MINUS	:
@@ -176,33 +220,19 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 		case TOK_SLASH	:
 		{
 			ast_var_t var = tok_to_bin(tok->var);
+			ast_bin_t *ast = ast_as_bin(ast_new(var));
 
-			ast_t *r = parse_expr_pn(tokp);
-			ast_t *l = parse_expr_pn(tokp);
+			ast->r = parse_expr_pn(tokp);
+			ast->l = parse_expr_pn(tokp);
 
-			if (l != NULL && r != NULL)
+			if (ast->l == NULL || ast->r == NULL)
 			{
-				ast_bin_t *ast = ast_as_bin(ast_new(var));
-
-				ast->l = l;
-				ast->r = r;
-
-				return &ast->ast;
-			}
-			else
-			{
-				if (l != NULL)
-				{
-					ast_del(l);
-				}
-
-				if (r != NULL)
-				{
-					ast_del(r);
-				}
+				ast_del(&ast->ast);
 
 				return NULL;
 			}
+
+			return &ast->ast;
 		}
 		default		: return NULL;
 	}
@@ -211,14 +241,25 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 static ast_t *parse_expr(const tok_t **tokp)
 {
 	const tok_t *tok = *tokp;
+	const tok_t *pre = NULL;
 	ast_t *ast = NULL;
 
 	tok_t *opstk = NULL;
 	tok_t *outpt = NULL;
+	tok_t *fnstk = NULL;
 
 	for (;;)
 	{
-		if (is_val(tok))
+		if (fnstk != NULL && is_comma(tok))
+		{
+			while (opstk != NULL && !is_lparen(opstk))
+			{
+				tok_push(&outpt, tok_pop(&opstk));
+			}
+
+			tok_as_call(fnstk)->narg++;
+		}
+		else if (is_val(tok))
 		{
 			tok_push(&outpt, tok_dup(tok));
 		}
@@ -229,6 +270,11 @@ static ast_t *parse_expr(const tok_t **tokp)
 		else if (is_lparen(tok))
 		{
 			tok_push(&opstk, tok_dup(tok));
+
+			if (pre != NULL && !is_op(pre))
+			{
+				tok_push(&fnstk, &tok_new_call(0)->tok);
+			}
 		}
 		else if (is_rparen(tok))
 		{
@@ -241,12 +287,23 @@ static ast_t *parse_expr(const tok_t **tokp)
 			{
 				goto exit;
 			}
+
+			if (fnstk != NULL)
+			{
+				if (!is_lparen(pre))
+				{
+					tok_as_call(fnstk)->narg++;
+				}
+
+				tok_push(&outpt, tok_pop(&fnstk));
+			}
 		}
 		else
 		{
 			break;
 		}
 
+		pre = tok;
 		tok = tok->next;
 	}
 
@@ -286,6 +343,10 @@ exit:
 	while (outpt != NULL)
 	{
 		tok_del(tok_pop(&outpt));
+	}
+	while (fnstk != NULL)
+	{
+		tok_del(tok_pop(&fnstk));
 	}
 
 	return ast;
@@ -440,36 +501,24 @@ static ast_t *parse_stmt(const tok_t **tokp)
 	const tok_t *tok = *tokp;
 	ast_t *ast;
 
-	ast = parse_block(&tok);
-	if (ast != NULL)
+	ast_t *(*parse_fns[])(const tok_t **tokp) =
 	{
-		*tokp = tok;
+		parse_block,
+		parse_fullexpr,
+		parse_if,
+		parse_while,
+	};
 
-		return ast;
-	}
-
-	ast = parse_fullexpr(&tok);
-	if (ast != NULL)
+	for (int i = 0; i < ARRAY_SIZE(parse_fns); i++)
 	{
-		*tokp = tok;
+		ast = parse_fns[i](&tok);
 
-		return ast;
-	}
+		if (ast != NULL)
+		{
+			*tokp = tok;
 
-	ast = parse_if(&tok);
-	if (ast != NULL)
-	{
-		*tokp = tok;
-
-		return ast;
-	}
-
-	ast = parse_while(&tok);
-	if (ast != NULL)
-	{
-		*tokp = tok;
-
-		return ast;
+			return ast;
+		}
 	}
 
 	return NULL;

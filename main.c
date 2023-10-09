@@ -11,7 +11,7 @@ int main(int argc, char *argv[])
 	}
 
 	tok_t *tok_list = lex(argv[1]);
-	ast_t *ast = parse(tok_list);
+	ast_t *ast_list = parse(tok_list);
 
 	printf("lex: ");
 	tok_t *tok = tok_list;
@@ -28,11 +28,19 @@ int main(int argc, char *argv[])
 	}
 	printf("\n");
 
-	if (ast != NULL)
+	printf("parse: ");
+	ast_t *ast = ast_list;
+	while (ast != NULL)
 	{
-		printf("parse: ");
 		ast_print(ast);
-		printf("\n");
+
+		if (ast->next != NULL)
+		{
+			printf(" ");
+		}
+
+		ast = ast->next;
 	}
+	printf("\n");
 }
 

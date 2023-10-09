@@ -16,11 +16,16 @@ void tok_print(const tok_t *tok)
 		{
 			printf("%s", tok_as_id(tok)->id);
 		}					break;
+		case TOK_CALL	:
+		{
+			printf("(%i)", tok_as_call(tok)->narg);
+		}					break;
 		case TOK_EQ	: printf("=");		break;
 		case TOK_PLUS	: printf("+");		break;
 		case TOK_MINUS	: printf("-");		break;
 		case TOK_ASTER	: printf("*");		break;
 		case TOK_SLASH	: printf("/");		break;
+		case TOK_COMMA	: printf(",");		break;
 		case TOK_SEMICO	: printf(";");		break;
 		case TOK_LPAREN	: printf("(");		break;
 		case TOK_RPAREN	: printf(")");		break;
@@ -40,6 +45,7 @@ tok_t *tok_new(tok_var_t var)
 	{
 		case TOK_ID	: size = sizeof(tok_id_t);	break;
 		case TOK_INT	: size = sizeof(tok_int_t);	break;
+		case TOK_CALL	: size = sizeof(tok_call_t);	break;
 		default		: size = sizeof(tok_t);		break;
 	}
 
@@ -71,6 +77,15 @@ tok_id_t *tok_new_id(const char *s, int l)
 	return tok;
 }
 
+tok_call_t *tok_new_call(int narg)
+{
+	tok_call_t *tok = tok_as_call(tok_new(TOK_CALL));
+
+	tok->narg = narg;
+
+	return tok;
+}
+
 tok_int_t *tok_dup_int(const tok_int_t *tok)
 {
 	return tok_new_int(tok->val);
@@ -79,6 +94,11 @@ tok_int_t *tok_dup_int(const tok_int_t *tok)
 tok_id_t *tok_dup_id(const tok_id_t *tok)
 {
 	return tok_new_id(tok->id, strlen(tok->id));
+}
+
+tok_call_t *tok_dup_call(const tok_call_t *tok)
+{
+	return tok_new_call(tok->narg);
 }
 
 tok_t *tok_dup(const tok_t *tok)
@@ -92,6 +112,7 @@ tok_t *tok_dup(const tok_t *tok)
 	{
 		case TOK_INT	: return &tok_dup_int(tok_as_int(tok))->tok;
 		case TOK_ID	: return &tok_dup_id(tok_as_id(tok))->tok;
+		case TOK_CALL	: return &tok_dup_call(tok_as_call(tok))->tok;
 		default		: return tok_new(tok->var);
 	}
 }
