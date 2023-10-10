@@ -285,7 +285,7 @@ static ast_t *parse_expr(const tok_t **tokp)
 
 	for (;;)
 	{
-		if (fnstk != NULL && is_comma(tok))
+		if (is_call(fnstk) && is_comma(tok))
 		{
 			while (opstk != NULL && !is_lparen(opstk))
 			{
@@ -310,6 +310,10 @@ static ast_t *parse_expr(const tok_t **tokp)
 			{
 				tok_push(&fnstk, &tok_new_call(0)->tok);
 			}
+			else
+			{
+				tok_push(&fnstk, tok_dup(tok));
+			}
 		}
 		else if (is_rparen(tok))
 		{
@@ -318,7 +322,7 @@ static ast_t *parse_expr(const tok_t **tokp)
 				break;
 			}
 
-			if (fnstk != NULL)
+			if (is_call(fnstk))
 			{
 				if (!is_lparen(pre))
 				{
@@ -326,6 +330,15 @@ static ast_t *parse_expr(const tok_t **tokp)
 				}
 
 				tok_push(&outpt, tok_pop(&fnstk));
+			}
+			else
+			{
+				if (is_lparen(pre))
+				{
+					goto exit;
+				}
+
+				tok_del(tok_pop(&fnstk));
 			}
 		}
 		else
