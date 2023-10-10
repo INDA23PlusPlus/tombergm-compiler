@@ -10,36 +10,36 @@ void tok_print(const tok_t *tok)
 	{
 		case TOK_INT	:
 		{
-			printf("%i", tok_as_int(tok)->val);
-		}					break;
+			fprintf(stderr, "%i", tok_as_int(tok)->val);
+		}						break;
 		case TOK_ID	:
 		{
-			printf("%s", tok_as_id(tok)->id);
-		}					break;
+			fprintf(stderr, "%s", tok_as_id(tok)->id);
+		}						break;
 		case TOK_CALL	:
 		{
-			printf("(%i)", tok_as_call(tok)->narg);
-		}					break;
-		case TOK_EQ	: printf("=");		break;
-		case TOK_LT	: printf("<");		break;
-		case TOK_GT	: printf(">");		break;
-		case TOK_2EQ	: printf("==");		break;
-		case TOK_PLUS	: printf("+");		break;
-		case TOK_MINUS	: printf("-");		break;
-		case TOK_ASTER	: printf("*");		break;
-		case TOK_SLASH	: printf("/");		break;
-		case TOK_COMMA	: printf(",");		break;
-		case TOK_SEMICO	: printf(";");		break;
-		case TOK_LPAREN	: printf("(");		break;
-		case TOK_RPAREN	: printf(")");		break;
-		case TOK_LBRACE	: printf("{");		break;
-		case TOK_RBRACE	: printf("}");		break;
-		case TOK_LET	: printf("let");	break;
-		case TOK_IF	: printf("if");		break;
-		case TOK_ELSE	: printf("else");	break;
-		case TOK_WHILE	: printf("while");	break;
-		case TOK_RET	: printf("return");	break;
-		case TOK_FN	: printf("fn");		break;
+			fprintf(stderr, "(%i)", tok_as_call(tok)->narg);
+		}						break;
+		case TOK_EQ	: fprintf(stderr, "=");		break;
+		case TOK_LT	: fprintf(stderr, "<");		break;
+		case TOK_GT	: fprintf(stderr, ">");		break;
+		case TOK_2EQ	: fprintf(stderr, "==");	break;
+		case TOK_PLUS	: fprintf(stderr, "+");		break;
+		case TOK_MINUS	: fprintf(stderr, "-");		break;
+		case TOK_ASTER	: fprintf(stderr, "*");		break;
+		case TOK_SLASH	: fprintf(stderr, "/");		break;
+		case TOK_COMMA	: fprintf(stderr, ",");		break;
+		case TOK_SEMICO	: fprintf(stderr, ";");		break;
+		case TOK_LPAREN	: fprintf(stderr, "(");		break;
+		case TOK_RPAREN	: fprintf(stderr, ")");		break;
+		case TOK_LBRACE	: fprintf(stderr, "{");		break;
+		case TOK_RBRACE	: fprintf(stderr, "}");		break;
+		case TOK_LET	: fprintf(stderr, "let");	break;
+		case TOK_IF	: fprintf(stderr, "if");	break;
+		case TOK_ELSE	: fprintf(stderr, "else");	break;
+		case TOK_WHILE	: fprintf(stderr, "while");	break;
+		case TOK_RET	: fprintf(stderr, "return");	break;
+		case TOK_FN	: fprintf(stderr, "fn");	break;
 	}
 }
 

@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "gen.h"
 #include "lex.h"
 #include "parse.h"
 
@@ -13,7 +14,8 @@ int main(int argc, char *argv[])
 	tok_t *tok_list = lex(argv[1]);
 	ast_t *ast_list = parse(tok_list);
 
-	printf("lex: ");
+#if 0
+	fprintf(stderr, "lex: ");
 	tok_t *tok = tok_list;
 	while (tok != NULL)
 	{
@@ -21,14 +23,14 @@ int main(int argc, char *argv[])
 
 		if (tok->next != NULL)
 		{
-			printf(" ");
+			fprintf(stderr, " ");
 		}
 
 		tok = tok->next;
 	}
-	printf("\n");
+	fprintf(stderr, "\n");
 
-	printf("parse: ");
+	fprintf(stderr, "parse: ");
 	ast_t *ast = ast_list;
 	while (ast != NULL)
 	{
@@ -36,11 +38,14 @@ int main(int argc, char *argv[])
 
 		if (ast->next != NULL)
 		{
-			printf(" ");
+			fprintf(stderr, " ");
 		}
 
 		ast = ast->next;
 	}
-	printf("\n");
+	fprintf(stderr, "\n");
+#endif
+
+	gen(ast_list);
 }
 

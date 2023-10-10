@@ -26,17 +26,17 @@ void ast_print(const ast_t *ast)
 	{
 		case AST_CONST	:
 		{
-			printf("%i", ast_as_const(ast)->val);
+			fprintf(stderr, "%i", ast_as_const(ast)->val);
 		}			break;
 		case AST_ID	:
 		{
-			printf("%s", ast_as_id(ast)->id);
+			fprintf(stderr, "%s", ast_as_id(ast)->id);
 		}			break;
 		case AST_CALL	:
 		{
 			ast_print(ast_as_call(ast)->fn);
 
-			printf("(");
+			fprintf(stderr, "(");
 
 			ast_t *arg = ast_as_call(ast)->arg;
 			while (arg != NULL)
@@ -47,11 +47,11 @@ void ast_print(const ast_t *ast)
 
 				if (arg != NULL)
 				{
-					printf(", ");
+					fprintf(stderr, ", ");
 				}
 			}
 
-			printf(")");
+			fprintf(stderr, ")");
 		}			break;
 		case AST_SET	:
 		case AST_EQ	:
@@ -62,20 +62,20 @@ void ast_print(const ast_t *ast)
 		case AST_PROD	:
 		case AST_QUOT	:
 		{
-			printf("(");
+			fprintf(stderr, "(");
 			ast_print(ast_as_bin(ast)->l);
-			printf(" %s ", op_sym(ast->var));
+			fprintf(stderr, " %s ", op_sym(ast->var));
 			ast_print(ast_as_bin(ast)->r);
-			printf(")");
+			fprintf(stderr, ")");
 		}			break;
 		case AST_BLOCK	:
 		{
-			printf("{");
+			fprintf(stderr, "{");
 
 			ast_t *stmt = ast_as_block(ast)->stmt;
 			while (stmt != NULL)
 			{
-				printf(" ");
+				fprintf(stderr, " ");
 				ast_print(stmt);
 				if
 				(
@@ -83,59 +83,59 @@ void ast_print(const ast_t *ast)
 					stmt->var != AST_WHILE
 				)
 				{
-					printf(";");
+					fprintf(stderr, ";");
 				}
 				stmt = stmt->next;
 			}
 
-			printf(" }");
+			fprintf(stderr, " }");
 		}			break;
 		case AST_LET	:
 		{
-			printf("let ");
+			fprintf(stderr, "let ");
 			ast_print(ast_as_let(ast)->id);
 
 			if (ast_as_let(ast)->expr != NULL)
 			{
-				printf(" = ");
+				fprintf(stderr, " = ");
 				ast_print(ast_as_let(ast)->expr);
 			}
 		}			break;
 		case AST_IF	:
 		{
-			printf("if (");
+			fprintf(stderr, "if (");
 			ast_print(ast_as_if(ast)->expr);
-			printf(") ");
+			fprintf(stderr, ") ");
 			ast_print(ast_as_if(ast)->t_stmt);
 
 			ast_t *f_stmt = ast_as_if(ast)->f_stmt;
 			if (f_stmt != NULL)
 			{
-				printf(" else ");
+				fprintf(stderr, " else ");
 				ast_print(f_stmt);
 			}
 		}			break;
 		case AST_WHILE	:
 		{
-			printf("while (");
+			fprintf(stderr, "while (");
 			ast_print(ast_as_while(ast)->expr);
-			printf(") ");
+			fprintf(stderr, ") ");
 			ast_print(ast_as_while(ast)->stmt);
 		}			break;
 		case AST_RET	:
 		{
-			printf("return");
+			fprintf(stderr, "return");
 			if (ast_as_ret(ast)->expr != NULL)
 			{
-				printf(" ");
+				fprintf(stderr, " ");
 				ast_print(ast_as_ret(ast)->expr);
 			}
 		}			break;
 		case AST_FN	:
 		{
-			printf("fn ");
+			fprintf(stderr, "fn ");
 			ast_print(ast_as_fn(ast)->id);
-			printf("(");
+			fprintf(stderr, "(");
 
 			ast_t *arg = ast_as_fn(ast)->arg;
 			while (arg != NULL)
@@ -146,11 +146,11 @@ void ast_print(const ast_t *ast)
 
 				if (arg != NULL)
 				{
-					printf(", ");
+					fprintf(stderr, ", ");
 				}
 			}
 
-			printf(") ");
+			fprintf(stderr, ") ");
 			ast_print(ast_as_fn(ast)->body);
 		}			break;
 		default		:	break;
