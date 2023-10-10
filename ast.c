@@ -64,7 +64,7 @@ void ast_print(const ast_t *ast)
 		{
 			printf("(");
 			ast_print(ast_as_bin(ast)->l);
-			printf("%s", op_sym(ast->var));
+			printf(" %s ", op_sym(ast->var));
 			ast_print(ast_as_bin(ast)->r);
 			printf(")");
 		}			break;
@@ -77,7 +77,14 @@ void ast_print(const ast_t *ast)
 			{
 				printf(" ");
 				ast_print(stmt);
-				printf(";");
+				if
+				(
+					stmt->var != AST_IF	&&
+					stmt->var != AST_WHILE
+				)
+				{
+					printf(";");
+				}
 				stmt = stmt->next;
 			}
 
