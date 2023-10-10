@@ -26,11 +26,11 @@ void ast_print(const ast_t *ast)
 	{
 		case AST_CONST	:
 		{
-			printf("(%i)", ast_as_const(ast)->val);
+			printf("%i", ast_as_const(ast)->val);
 		}			break;
 		case AST_ID	:
 		{
-			printf("(%s)", ast_as_id(ast)->id);
+			printf("%s", ast_as_id(ast)->id);
 		}			break;
 		case AST_CALL	:
 		{
