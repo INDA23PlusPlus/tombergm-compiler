@@ -10,20 +10,29 @@
 <idcont>	::= <idchar> | <idchar> <idcont>
 <id>		::= <idbeg> | <idbeg> <idcont>
 <val>		::= <int> | <id>
-<paren>		::= "(" <expr> ")"
+<exprlst>	::= <expr> | <expr> "," <exprlst>
+<call>		::= <expr> "(" <nspc> ")" <nspc> | <expr>  "(" <exprlst> ")" <nspc>
+<set>		::= <expr> "=" <expr>
+<eq>		::= <expr> "==" <expr>
+<lt>		::= <expr> "<" <expr>
+<gt>		::= <expr> ">" <expr>
 <sum>		::= <expr> "+" <expr>
 <diff>		::= <expr> "-" <expr>
 <prod>		::= <expr> "*" <expr>
 <quot>		::= <expr> "/" <expr>
-<set>		::= <id> <nspc> "=" <expr>
-<sexpr>		::= <paren> | <val> | <sum> | <diff> | <prod> | <quot> | <set>
+<paren>		::= "(" <expr> ")"
+<sexpr>		::= <val> | <call> | <set> | <eq> | <lt> | <gt> | <sum> | <diff> | <prod> | <quot> | <paren>
 <expr>		::= <nspc> <sexpr> <nspc>
-<fullexpr>	::= <expr> ";" <nspc>
-<print>		::= "print" <expr> ";" <nspc>
-<iff>		::= "if" <nspc> "(" <expr> ")" <stmt>
-<if>		::= <iff> | <iff> "else" <nspc> <stmt>
-<while>		::= "while" <nspc> "(" <expr> ")" <nspc> <stmt>
-<stmt>		::= <print> | <if> | <while> | <fullexpr> | <block>
-<stmtlist>	::= E | <stmt> | <stmt> <stmtlist>
-<block>		::= <nspc> "{" <nspc> <stmtlist> <nspc> "}" <nspc>
+<fullexpr>	::= <nspc> ";" <nspc> | <expr> ";" <nspc>
+<let>		::= <nspc> "let" <spc> <id> <nspc> ";" <nspc> | <nspc> "let" <spc> <id> <nspc> "=" <expr> ";" <nspc>
+<iff>		::= <nspc> "if" <nspc> "(" <expr> ")" <stmt>
+<if>		::= <iff> | <iff> "else" <stmt>
+<while>		::= <nspc> "while" <nspc> "(" <expr> ")" <stmt>
+<ret>		::= <nspc> "return" <nspc> ";" <nspc> | <nspc> "return" <expr> ";" <nspc>
+<stmt>		::= <fullexpr> | <let> | <if> | <while> | <ret> | <block>
+<stmtlist>	::= <nspc> | <stmt> | <stmt> <stmtlist>
+<block>		::= <nspc> "{" <stmtlist> "}" <nspc>
+<arglst>	::= <nspc> <id> <nspc> | <nspc> <id> <nspc> "," <arglst>
+<fn>		::= <nspc> "fn" <spc> <id> <nspc> "(" <nspc> ")" <block> | <nspc> "fn" <spc> <id> <nspc> "(" <arglst> ")" <block>
+<prog>		::= <nspc> | <fn> | <fn> <prog>
 

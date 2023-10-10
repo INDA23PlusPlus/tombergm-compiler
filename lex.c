@@ -74,9 +74,20 @@ static tok_t *lex_sym(const char **sp)
 	const char *s = *sp;
 
 	tok_var_t var;
-	switch (s[0])
+	switch (s++[0])
 	{
-		case '='	: var = TOK_EQ;		break;
+		case '='	:
+		{
+			var = TOK_EQ;
+
+			switch (s++[0])
+			{
+				case '='	: var = TOK_2EQ;	break;
+				default		: s--;			break;
+			}
+		}					break;
+		case '<'	: var = TOK_LT;		break;
+		case '>'	: var = TOK_GT;		break;
 		case '+'	: var = TOK_PLUS;	break;
 		case '-'	: var = TOK_MINUS;	break;
 		case '*'	: var = TOK_ASTER;	break;
@@ -89,7 +100,6 @@ static tok_t *lex_sym(const char **sp)
 		case '}'	: var = TOK_RBRACE;	break;
 		default		: return NULL;
 	}
-	s++;
 
 	*sp = s;
 
@@ -102,7 +112,12 @@ static tok_t *lex_kw(const char **sp)
 
 	tok_var_t var;
 
-	if (strncmp(s, "if", 2) == 0)
+	if (strncmp(s, "let", 3) == 0)
+	{
+		var = TOK_LET;
+		s += 3;
+	}
+	else if (strncmp(s, "if", 2) == 0)
 	{
 		var = TOK_IF;
 		s += 2;
@@ -116,6 +131,16 @@ static tok_t *lex_kw(const char **sp)
 	{
 		var = TOK_WHILE;
 		s += 5;
+	}
+	else if(strncmp(s, "return", 6) == 0)
+	{
+		var = TOK_RET;
+		s += 6;
+	}
+	else if (strncmp(s, "fn", 2) == 0)
+	{
+		var = TOK_FN;
+		s += 2;
 	}
 	else
 	{
@@ -164,8 +189,7 @@ tok_t *lex(const char *s)
 			break;
 		}
 
-		*tok_head = tok;
-		tok_head = &tok->next;
+		tok_push_back(&tok_head, tok);
 	}
 
 	return tok_list;

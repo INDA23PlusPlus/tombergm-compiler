@@ -21,6 +21,9 @@ void tok_print(const tok_t *tok)
 			printf("(%i)", tok_as_call(tok)->narg);
 		}					break;
 		case TOK_EQ	: printf("=");		break;
+		case TOK_LT	: printf("<");		break;
+		case TOK_GT	: printf(">");		break;
+		case TOK_2EQ	: printf("==");		break;
 		case TOK_PLUS	: printf("+");		break;
 		case TOK_MINUS	: printf("-");		break;
 		case TOK_ASTER	: printf("*");		break;
@@ -31,9 +34,12 @@ void tok_print(const tok_t *tok)
 		case TOK_RPAREN	: printf(")");		break;
 		case TOK_LBRACE	: printf("{");		break;
 		case TOK_RBRACE	: printf("}");		break;
+		case TOK_LET	: printf("let");	break;
 		case TOK_IF	: printf("if");		break;
 		case TOK_ELSE	: printf("else");	break;
 		case TOK_WHILE	: printf("while");	break;
+		case TOK_RET	: printf("return");	break;
+		case TOK_FN	: printf("fn");		break;
 	}
 }
 
@@ -134,11 +140,29 @@ void tok_dstr(tok_t *tok)
 	}
 }
 
-void tok_del(tok_t *tok)
+tok_t *tok_del(tok_t *tok)
 {
-	tok_dstr(tok);
+	if (tok != NULL)
+	{
+		tok_dstr(tok);
 
-	xfree(tok);
+		xfree(tok);
+	}
+
+	return NULL;
 }
 
+tok_t *tok_del_list(tok_t *tok)
+{
+	while (tok != NULL)
+	{
+		tok_t *next = tok->next;
+
+		tok_del(tok);
+
+		tok = next;
+	}
+
+	return NULL;
+}
 

@@ -1,12 +1,17 @@
 #ifndef TOK_H
 #define TOK_H
 
+#include <stddef.h>
+
 typedef enum
 {
 	TOK_INT,
 	TOK_ID,
 	TOK_CALL,	/* Pseudo-token for parsing */
 	TOK_EQ,
+	TOK_LT,
+	TOK_GT,
+	TOK_2EQ,
 	TOK_PLUS,
 	TOK_MINUS,
 	TOK_ASTER,
@@ -17,9 +22,12 @@ typedef enum
 	TOK_RPAREN,
 	TOK_LBRACE,
 	TOK_RBRACE,
+	TOK_LET,
 	TOK_IF,
 	TOK_ELSE,
 	TOK_WHILE,
+	TOK_RET,
+	TOK_FN,
 } tok_var_t;
 
 typedef struct tok tok_t;
@@ -61,6 +69,42 @@ typedef struct
 #define tok_as_id(v) tok_as(id, v)
 #define tok_as_call(v) tok_as(call, v)
 
+static inline tok_t *tok_push(tok_t **tokp, tok_t *tok)
+{
+	if (tok != NULL)
+	{
+		tok_t *next = *tokp;
+		*tokp = tok;
+
+		tok->next = next;
+	}
+
+	return tok;
+}
+
+static inline tok_t *tok_push_back(tok_t ***head, tok_t *tok)
+{
+	if (tok != NULL)
+	{
+		**head = tok;
+		*head = &tok->next;
+	}
+
+	return tok;
+}
+
+static inline tok_t *tok_pop(tok_t **tokp)
+{
+	tok_t *tok = *tokp;
+
+	if (tok != NULL)
+	{
+		*tokp = tok->next;
+	}
+
+	return tok;
+}
+
 void		tok_print(const tok_t *tok);
 tok_t *		tok_new(tok_var_t var);
 tok_int_t *	tok_new_int(int val);
@@ -72,7 +116,8 @@ tok_call_t *	tok_dup_call(const tok_call_t *tok);
 tok_t *		tok_dup(const tok_t *tok);
 void		tok_dstr_id(tok_id_t *tok);
 void		tok_dstr(tok_t *tok);
-void		tok_del(tok_t *tok);
+tok_t *		tok_del(tok_t *tok);
+tok_t *		tok_del_list(tok_t *tok);
 
 #endif
 
