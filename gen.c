@@ -50,7 +50,7 @@ static const char *reg_names[] =
 	"%r15",
 };
 
-reg_t call_regs[] =
+static reg_t call_regs[] =
 {
 	REG_RDI,
 	REG_RSI,
@@ -111,7 +111,7 @@ static int endl(void)
 	return printf("\n");
 }
 
-void state_init(state_t *st)
+static void state_init(state_t *st)
 {
 	st->defs = NULL;
 
@@ -132,7 +132,7 @@ void state_init(state_t *st)
 	st->lbl = 0;
 }
 
-void state_dstr(state_t *st)
+static void state_dstr(state_t *st)
 {
 	while (st->defs != NULL)
 	{
@@ -144,7 +144,7 @@ void state_dstr(state_t *st)
 	}
 }
 
-void def_add(state_t *st, const char *id, int r)
+static void def_add(state_t *st, const char *id, int r)
 {
 	def_t *def = xmalloc(sizeof(def_t));
 
@@ -155,7 +155,7 @@ void def_add(state_t *st, const char *id, int r)
 	st->defs = def;
 }
 
-def_t *def_lookup(const state_t *st, const char *id)
+static def_t *def_lookup(const state_t *st, const char *id)
 {
 	def_t *def = st->defs;
 
@@ -194,12 +194,15 @@ static int reg_alloc(state_t *st)
 		}
 	}
 
-	return -1;
+	return REG_INV;
 }
 
 static void reg_free(state_t *st, int r)
 {
-	st->regs[r] &= ~ALLOCD;
+	if (r != REG_INV)
+	{
+		st->regs[r] &= ~ALLOCD;
+	}
 }
 
 static int reg_realloc(state_t *st, int *a)
@@ -452,7 +455,7 @@ static int gen_expr(const ast_t *ast, state_t *st)
 		case AST_LT	: return gen_lt(ast_as_bin(ast), st);
 		case AST_SUM	: return gen_sum(ast_as_bin(ast), st);
 		case AST_DIFF	: return gen_diff(ast_as_bin(ast), st);
-		default		: return -1;
+		default		: return REG_INV;
 	}
 }
 
@@ -464,10 +467,7 @@ static int gen_block(const ast_block_t *ast, state_t *st)
 	{
 		int r = gen_stmt(stmt, st);
 
-		if (r != REG_INV)
-		{
-			reg_free(st, r);
-		}
+		reg_free(st, r);
 
 		stmt = stmt->next;
 	}
@@ -477,35 +477,63 @@ static int gen_block(const ast_block_t *ast, state_t *st)
 
 static int gen_if(const ast_if_t *ast, state_t *st)
 {
-	int a = -1;
-	int b = -1;
+	int lbl_a = -1;
+	int lbl_b = -1;
 	int r = gen_expr(ast->expr, st);
 
 	insn("TEST\t%s, %s", reg_name(r), reg_name(r));
 
 	reg_free(st, r);
 
-	a = lbl_alloc(st);
+	lbl_a = lbl_alloc(st);
 
 	if (ast->f_stmt != NULL)
 	{
-		b = lbl_alloc(st);
+		lbl_b = lbl_alloc(st);
 	}
 
-	insn("JZ\t%s", lbl_name(a));
+	insn("JZ\t%s", lbl_name(lbl_a));
 
 	gen_stmt(ast->t_stmt, st);
 	if (ast->f_stmt != NULL)
 	{
-		insn("JMP\t%s", lbl_name(b));
+		insn("JMP\t%s", lbl_name(lbl_b));
 	}
 
-	labl("%s", lbl_name(a));
+	labl("%s", lbl_name(lbl_a));
 	if (ast->f_stmt != NULL)
 	{
 		gen_stmt(ast->f_stmt, st);
-		labl("%s", lbl_name(b));
+		labl("%s", lbl_name(lbl_b));
 	}
+
+	return REG_INV;
+}
+
+static int gen_while(const ast_while_t *ast, state_t *st)
+{
+	int lbl_a = lbl_alloc(st);
+	int lbl_b = lbl_alloc(st);
+	int r;
+	int s;
+
+	labl("%s", lbl_name(lbl_a));
+
+	r = gen_expr(ast->expr, st);
+
+	insn("TEST\t%s, %s", reg_name(r), reg_name(r));
+
+	reg_free(st, r);
+
+	insn("JZ\t%s", lbl_name(lbl_b));
+
+	s = gen_stmt(ast->stmt, st);
+
+	reg_free(st, s);
+
+	insn("JMP\t%s", lbl_name(lbl_a));
+
+	labl("%s", lbl_name(lbl_b));
 
 	return REG_INV;
 }
@@ -535,6 +563,7 @@ static int gen_stmt(const ast_t *ast, state_t *st)
 	{
 		case AST_BLOCK	: return gen_block(ast_as_block(ast), st);
 		case AST_IF	: return gen_if(ast_as_if(ast), st);
+		case AST_WHILE	: return gen_while(ast_as_while(ast), st);
 		case AST_RET	: return gen_ret(ast_as_ret(ast), st);
 		default		: return gen_expr(ast, st);
 	}
@@ -570,7 +599,7 @@ static int gen_fn(const ast_fn_t *ast, state_t *st)
 
 	state_dstr(&fn_st);
 
-	return -1;
+	return REG_INV;
 }
 
 void gen(const ast_t *ast)
