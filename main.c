@@ -37,9 +37,9 @@ static char *read_stdin(void)
 	return data;
 }
 
-static char *read_file(const char *filename)
+static char *read_file(const char *fname)
 {
-	FILE *f = fopen(filename, "r");
+	FILE *f = fopen(fname, "r");
 
 	if (f == NULL)
 	{
@@ -70,7 +70,8 @@ static char *read_file(const char *filename)
 
 int main(int argc, char *argv[])
 {
-	const char *filename = NULL;
+	const char *ifname = NULL;
+	const char *ofname = NULL;
 	int verbose = 0;
 
 	for (int i = 1; i < argc; i++)
@@ -81,33 +82,56 @@ int main(int argc, char *argv[])
 		{
 			verbose = 1;
 		}
-		else
+		else if (strcmp(arg, "-o") == 0)
 		{
-			if (filename == NULL)
-			{
-				filename = arg;
-			}
-			else
+			if (ofname != NULL)
 			{
 				return EXIT_FAILURE;
 			}
+
+			i++;
+
+			if (i == argc)
+			{
+				return EXIT_FAILURE;
+			}
+
+			arg = argv[i];
+			ofname = arg;
+		}
+		else
+		{
+			if (ifname != NULL)
+			{
+				return EXIT_FAILURE;
+			}
+
+			ifname = arg;
 		}
 	}
 
 	char *input;
 
-	if (filename == NULL || strcmp(filename, "-") == 0)
+	if (ifname == NULL || strcmp(ifname, "-") == 0)
 	{
 		input = read_stdin();
 	}
 	else
 	{
-		input = read_file(filename);
+		input = read_file(ifname);
 	}
 
 	if (input == NULL)
 	{
 		return EXIT_FAILURE;
+	}
+
+	if (ofname != NULL && strcmp(ofname, "-") != 0)
+	{
+		if (freopen(ofname, "w", stdout) == NULL)
+		{
+			return EXIT_FAILURE;
+		}
 	}
 
 	tok_t *tok_list = lex(input);

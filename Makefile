@@ -9,7 +9,7 @@ fib: fib.s
 	$(LINK.s) -o $@ $^
 
 fib.s: fib.dpp compiler
-	./compiler $(DPPFLAGS) $< >$@
+	./compiler $(DPPFLAGS) -o $@ $<
 
 compiler: ast.c gen.c lex.c main.c parse.c tok.c xmalloc.c
 	$(LINK.c) -o $@ $^
