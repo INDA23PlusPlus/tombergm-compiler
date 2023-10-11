@@ -1,6 +1,8 @@
 CFLAGS	= -Wall -Og -g
 ASFLAGS	= -Wall -g
 
+.PHONY: all clean
+
 all: fib
 
 fib: fib.s
