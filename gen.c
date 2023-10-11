@@ -365,6 +365,18 @@ static int gen_call(const ast_call_t *ast, state_t *st)
 	return r;
 }
 
+static int gen_set(const ast_bin_t *ast, state_t *st)
+{
+	int a = gen_expr(ast->l, st);
+	int b = gen_expr(ast->r, st);
+
+	insn("MOV\t%s, %s", reg_name(b), reg_name(a));
+
+	reg_free(st, b);
+
+	return a;
+}
+
 static int gen_eq(const ast_bin_t *ast, state_t *st)
 {
 	if (st->regs[REG_RAX] & ALLOCD)
@@ -550,6 +562,7 @@ static int gen_expr(const ast_t *ast, state_t *st)
 		case AST_CONST	: return gen_const(ast_as_const(ast), st);
 		case AST_ID	: return gen_id(ast_as_id(ast), st);
 		case AST_CALL	: return gen_call(ast_as_call(ast), st);
+		case AST_SET	: return gen_set(ast_as_bin(ast), st);
 		case AST_EQ	: return gen_eq(ast_as_bin(ast), st);
 		case AST_LT	: return gen_lt(ast_as_bin(ast), st);
 		case AST_SUM	: return gen_sum(ast_as_bin(ast), st);
