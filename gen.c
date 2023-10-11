@@ -286,6 +286,11 @@ static int gen_id(const ast_id_t *ast, state_t *st)
 
 static int gen_call(const ast_call_t *ast, state_t *st)
 {
+	if (ast->fn->var != AST_ID)
+	{
+		abort();
+	}
+
 	for (int i = 0; i < REG_MAX; i++)
 	{
 		if (st->regs[i] & ALLOCD)
@@ -362,6 +367,11 @@ static int gen_call(const ast_call_t *ast, state_t *st)
 
 static int gen_eq(const ast_bin_t *ast, state_t *st)
 {
+	if (st->regs[REG_RAX] & ALLOCD)
+	{
+		insn("PUSH\t%%rax");
+	}
+
 	int a = gen_expr(ast->l, st);
 	int b = gen_expr(ast->r, st);
 	int r;
@@ -372,11 +382,6 @@ static int gen_eq(const ast_bin_t *ast, state_t *st)
 	reg_free(st, b);
 
 	r = reg_alloc(st);
-
-	if (st->regs[REG_RAX] & ALLOCD)
-	{
-		insn("PUSH\t%%rax");
-	}
 
 	insn("SETE\t%%al");
 	insn("MOVZX\t%%al, %s", reg_name(r));
@@ -391,6 +396,11 @@ static int gen_eq(const ast_bin_t *ast, state_t *st)
 
 static int gen_lt(const ast_bin_t *ast, state_t *st)
 {
+	if (st->regs[REG_RAX] & ALLOCD)
+	{
+		insn("PUSH\t%%rax");
+	}
+
 	int a = gen_expr(ast->l, st);
 	int b = gen_expr(ast->r, st);
 	int r;
@@ -401,11 +411,6 @@ static int gen_lt(const ast_bin_t *ast, state_t *st)
 	reg_free(st, b);
 
 	r = reg_alloc(st);
-
-	if (st->regs[REG_RAX] & ALLOCD)
-	{
-		insn("PUSH\t%%rax");
-	}
 
 	insn("SETL\t%%al");
 	insn("MOVZX\t%%al, %s", reg_name(r));
@@ -444,6 +449,100 @@ static int gen_diff(const ast_bin_t *ast, state_t *st)
 	return r;
 }
 
+static int gen_prod(const ast_bin_t *ast, state_t *st)
+{
+	if ((st->regs[REG_RAX] & ALLOCD))
+	{
+		insn("PUSH\t%%rax");
+	}
+	if (st->regs[REG_RDX] & ALLOCD)
+	{
+		insn("PUSH\t%%rdx");
+	}
+
+	int a = gen_expr(ast->l, st);
+	int b = gen_expr(ast->r, st);
+	int r;
+
+	if (b == REG_RAX)
+	{
+		int t = a;
+		a = b;
+		b = t;
+	}
+
+	if (a != REG_RAX)
+	{
+		insn("MOV\t%s, %%rax", reg_name(a));
+	}
+	reg_free(st, a);
+
+	insn("IMUL\t%s", reg_name(b));
+	reg_free(st, b);
+
+	if (st->regs[REG_RDX] & ALLOCD)
+	{
+		insn("POP\t%%rdx");
+	}
+	if (st->regs[REG_RAX] & ALLOCD)
+	{
+		r = reg_alloc(st);
+		insn("MOV\t%%rax, %s", reg_name(r));
+
+		insn("POP\t%%rax");
+	}
+	else
+	{
+		r = REG_RAX;
+	}
+
+	return r;
+}
+
+static int gen_quot(const ast_bin_t *ast, state_t *st)
+{
+	if ((st->regs[REG_RAX] & ALLOCD))
+	{
+		insn("PUSH\t%%rax");
+	}
+	if (st->regs[REG_RDX] & ALLOCD)
+	{
+		insn("PUSH\t%%rdx");
+	}
+
+	int a = gen_expr(ast->l, st);
+	int b = gen_expr(ast->r, st);
+	int r;
+
+	if (a != REG_RAX)
+	{
+		insn("MOV\t%s, %%rax", reg_name(a));
+	}
+	reg_free(st, a);
+
+	insn("XOR\t%%rdx, %%rdx");
+	insn("IDIV\t%s", reg_name(b));
+	reg_free(st, b);
+
+	if (st->regs[REG_RDX] & ALLOCD)
+	{
+		insn("POP\t%%rdx");
+	}
+	if (st->regs[REG_RAX] & ALLOCD)
+	{
+		r = reg_alloc(st);
+		insn("MOV\t%%rax, %s", reg_name(r));
+
+		insn("POP\t%%rax");
+	}
+	else
+	{
+		r = REG_RAX;
+	}
+
+	return r;
+}
+
 static int gen_expr(const ast_t *ast, state_t *st)
 {
 	switch (ast->var)
@@ -455,6 +554,8 @@ static int gen_expr(const ast_t *ast, state_t *st)
 		case AST_LT	: return gen_lt(ast_as_bin(ast), st);
 		case AST_SUM	: return gen_sum(ast_as_bin(ast), st);
 		case AST_DIFF	: return gen_diff(ast_as_bin(ast), st);
+		case AST_PROD	: return gen_prod(ast_as_bin(ast), st);
+		case AST_QUOT	: return gen_quot(ast_as_bin(ast), st);
 		default		: return REG_INV;
 	}
 }
