@@ -27,8 +27,9 @@ typedef enum
 	REG_INV = -1,
 } reg_t;
 
-#define RESERV	1
-#define ALLOCD	2
+#define RESERV	1	/* Don't allocate for mutable temp */
+#define ALLOCD	2	/* Allocated for temp */
+#define NOCLOB	4	/* Save across calls, even if not allocd */
 
 static const char *reg_names[] =
 {
@@ -242,11 +243,32 @@ static inline int reg_reserv(const state_t *st, reg_t r)
 	return r != REG_INV && (st->regs[r] & RESERV) != 0;
 }
 
+static inline int reg_noclob(const state_t *st, reg_t r)
+{
+	return r != REG_INV && (st->regs[r] & NOCLOB) != 0;
+}
+
+static inline void reg_set_reserv(state_t *st, reg_t r)
+{
+	if (r != REG_INV)
+	{
+		st->regs[r] |= RESERV;
+	}
+}
+
 static inline void reg_set_allocd(state_t *st, reg_t r)
 {
 	if (r != REG_INV)
 	{
 		st->regs[r] |= ALLOCD;
+	}
+}
+
+static inline void reg_set_noclob(state_t *st, reg_t r)
+{
+	if (r != REG_INV)
+	{
+		st->regs[r] |= NOCLOB;
 	}
 }
 
@@ -359,20 +381,33 @@ static reg_t gen_call(const ast_call_t *ast, state_t *st)
 	{
 		reg_t a = gen_expr(arg, st);
 		reg_t b = call_regs[narg];
-		insn("PUSH\t%s", reg_name(b));
-		if (b != a)
+
+		if (reg_noclob(st, b))
 		{
-			if (reg_allocd(st, b))
-			{
-				b = reg_alloc(st);
-			}
-			insn("MOV\t%s, %s", reg_name(a), reg_name(b));
+			b = reg_realloc(st, &a);
 		}
+		else
+		{
+			if (b != a)
+			{
+				insn("MOV\t%s, %s", reg_name(a), reg_name(b));
+			}
+
+			reg_free(st, a);
+		}
+
 		moved[narg] = b;
-		reg_free(st, a);
 
 		narg++;
 		arg = arg->next;
+	}
+
+	for (reg_t i = 0; i < REG_MAX; i++)
+	{
+		if (reg_noclob(st, i))
+		{
+			insn("PUSH\t%s", reg_name(i));
+		}
 	}
 
 	for (int i = 0; i < narg; i++)
@@ -381,7 +416,7 @@ static reg_t gen_call(const ast_call_t *ast, state_t *st)
 
 		if (moved[i] != b)
 		{
-			insn("MOV\t%s, %s", moved[i], b);
+			insn("MOV\t%s, %s", reg_name(moved[i]), reg_name(b));
 			reg_free(st, moved[i]);
 		}
 	}
@@ -389,10 +424,12 @@ static reg_t gen_call(const ast_call_t *ast, state_t *st)
 	insn("XOR\t%%rax, %%rax");
 	insn("CALL\t%s", ast_as_id(ast->fn)->id);
 
-	while (narg > 0)
+	for (reg_t i = REG_MAX - 1; i >= 0; i--)
 	{
-		reg_t b = call_regs[--narg];
-		insn("POP\t%s", reg_name(b));
+		if (reg_noclob(st, i))
+		{
+			insn("POP\t%s", reg_name(i));
+		}
 	}
 
 	reg_t r = REG_RAX;
@@ -420,8 +457,8 @@ static reg_t gen_call(const ast_call_t *ast, state_t *st)
 
 static reg_t gen_set(const ast_bin_t *ast, state_t *st)
 {
-	reg_t a = gen_expr(ast->l, st);
 	reg_t b = gen_expr(ast->r, st);
+	reg_t a = gen_expr(ast->l, st);
 
 	insn("MOV\t%s, %s", reg_name(b), reg_name(a));
 
@@ -782,8 +819,14 @@ static reg_t gen_fn(const ast_fn_t *ast, state_t *st)
 	ast_t *arg = ast->arg;
 	while (arg != NULL)
 	{
-		def_add(&fn_st, ast_as_id(arg)->id, call_regs[narg++]);
+		reg_t r = call_regs[narg];
 
+		def_add(&fn_st, ast_as_id(arg)->id, r);
+
+		reg_set_reserv(&fn_st, r);
+		reg_set_noclob(&fn_st, r);
+
+		narg++;
 		arg = arg->next;
 	}
 
