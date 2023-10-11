@@ -4,10 +4,73 @@
 #include "gen.h"
 #include "lex.h"
 #include "parse.h"
+#include "xmalloc.h"
+
+static char *read_stdin(void)
+{
+	long size = 0;
+	long cap = 512;
+	char *data = NULL;
+
+	while (!feof(stdin) && !ferror(stdin))
+	{
+		cap = cap * 2;
+		data = xrealloc(data, cap);
+		size += fread(&data[size], sizeof(char), cap - size, stdin);
+	}
+
+	if (ferror(stdin))
+	{
+		xfree(data);
+
+		return NULL;
+	}
+
+	if (size == cap)
+	{
+		cap = cap + 1;
+		data = xrealloc(data, cap);
+	}
+
+	data[size] = '\0';
+
+	return data;
+}
+
+static char *read_file(const char *filename)
+{
+	FILE *f = fopen(filename, "r");
+
+	if (f == NULL)
+	{
+		return NULL;
+	}
+
+	fseek(f, 0, SEEK_END);
+	long size = ftell(f);
+	fseek(f, 0, SEEK_SET);
+
+	char *data = xmalloc(size + 1);
+
+	int n = fread(data, size, 1, f);
+
+	fclose(f);
+
+	if (n != 1)
+	{
+		xfree(data);
+
+		return NULL;
+	}
+
+	data[size] = '\0';
+
+	return data;
+}
 
 int main(int argc, char *argv[])
 {
-	const char *input = NULL;
+	const char *filename = NULL;
 	int verbose = 0;
 
 	for (int i = 1; i < argc; i++)
@@ -20,15 +83,26 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			if (input == NULL)
+			if (filename == NULL)
 			{
-				input = arg;
+				filename = arg;
 			}
 			else
 			{
 				return EXIT_FAILURE;
 			}
 		}
+	}
+
+	char *input;
+
+	if (filename == NULL || strcmp(filename, "-") == 0)
+	{
+		input = read_stdin();
+	}
+	else
+	{
+		input = read_file(filename);
 	}
 
 	if (input == NULL)
@@ -73,4 +147,6 @@ int main(int argc, char *argv[])
 	}
 
 	gen(ast_list);
+
+	xfree(input);
 }
