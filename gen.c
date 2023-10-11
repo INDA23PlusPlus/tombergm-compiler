@@ -60,6 +60,41 @@ static reg_t call_regs[] =
 	REG_R9,
 };
 
+typedef enum
+{
+	CND_EQ,
+	CND_NE,
+	CND_LT,
+	CND_LE,
+	CND_GT,
+	CND_GE,
+	CND_INV = -1,
+} cnd_t;
+
+static cnd_t cnd_neg(cnd_t c)
+{
+	switch (c)
+	{
+		case CND_EQ	: return CND_NE;
+		case CND_NE	: return CND_EQ;
+		case CND_LT	: return CND_GE;
+		case CND_LE	: return CND_GT;
+		case CND_GT	: return CND_LE;
+		case CND_GE	: return CND_LT;
+		default		: return CND_INV;
+	}
+}
+
+static const char *cnd_mnem[] =
+{
+	"E",
+	"NE",
+	"L",
+	"LE",
+	"G",
+	"GE",
+};
+
 typedef struct def def_t;
 
 struct def
@@ -395,15 +430,17 @@ static reg_t gen_set(const ast_bin_t *ast, state_t *st)
 	return a;
 }
 
-static reg_t gen_eq(const ast_bin_t *ast, state_t *st)
+static reg_t gen_cmp(const ast_t *ast, state_t *st, cnd_t c)
 {
+	const ast_bin_t *bin = ast_as_bin(ast);
+
 	if (reg_allocd(st, REG_RAX))
 	{
 		insn("PUSH\t%%rax");
 	}
 
-	reg_t a = gen_expr(ast->l, st);
-	reg_t b = gen_expr(ast->r, st);
+	reg_t a = gen_expr(bin->l, st);
+	reg_t b = gen_expr(bin->r, st);
 	reg_t r;
 
 	insn("CMP\t%s, %s", reg_name(b), reg_name(a));
@@ -413,36 +450,7 @@ static reg_t gen_eq(const ast_bin_t *ast, state_t *st)
 
 	r = reg_alloc(st);
 
-	insn("SETE\t%%al");
-	insn("MOVZX\t%%al, %s", reg_name(r));
-
-	if (reg_allocd(st, REG_RAX))
-	{
-		insn("POP\t%%rax");
-	}
-
-	return r;
-}
-
-static reg_t gen_lt(const ast_bin_t *ast, state_t *st)
-{
-	if (reg_allocd(st, REG_RAX))
-	{
-		insn("PUSH\t%%rax");
-	}
-
-	reg_t a = gen_expr(ast->l, st);
-	reg_t b = gen_expr(ast->r, st);
-	reg_t r;
-
-	insn("CMP\t%s, %s", reg_name(b), reg_name(a));
-
-	reg_free(st, a);
-	reg_free(st, b);
-
-	r = reg_alloc(st);
-
-	insn("SETL\t%%al");
+	insn("SET%s\t%%al", cnd_mnem[c]);
 	insn("MOVZX\t%%al, %s", reg_name(r));
 
 	if (reg_allocd(st, REG_RAX))
@@ -599,13 +607,39 @@ static reg_t gen_expr(const ast_t *ast, state_t *st)
 		case AST_ID	: return gen_id(ast_as_id(ast), st);
 		case AST_CALL	: return gen_call(ast_as_call(ast), st);
 		case AST_SET	: return gen_set(ast_as_bin(ast), st);
-		case AST_EQ	: return gen_eq(ast_as_bin(ast), st);
-		case AST_LT	: return gen_lt(ast_as_bin(ast), st);
+		case AST_EQ	: return gen_cmp(ast, st, CND_EQ);
+		case AST_LT	: return gen_cmp(ast, st, CND_LT);
 		case AST_SUM	: return gen_sum(ast_as_bin(ast), st);
 		case AST_DIFF	: return gen_diff(ast_as_bin(ast), st);
 		case AST_PROD	: return gen_prod(ast_as_bin(ast), st);
 		case AST_QUOT	: return gen_quot(ast_as_bin(ast), st);
 		default		: return REG_INV;
+	}
+}
+
+static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c)
+{
+	const ast_bin_t *bin = ast_as_bin(ast);
+
+	reg_t a = gen_expr(bin->l, st);
+	reg_t b = gen_expr(bin->r, st);
+
+	insn("CMP\t%s, %s", reg_name(b), reg_name(a));
+
+	reg_free(st, a);
+	reg_free(st, b);
+
+	return c;
+}
+
+static cnd_t gen_expr_cnd(const ast_t *ast, state_t *st)
+{
+	switch (ast->var)
+	{
+		case AST_EQ	: return gen_cmp_cnd(ast, st, CND_EQ);
+		case AST_LT	: return gen_cmp_cnd(ast, st, CND_LT);
+		case AST_GT	: return gen_cmp_cnd(ast, st, CND_GT);
+		default		: return CND_INV;
 	}
 }
 
@@ -627,22 +661,29 @@ static reg_t gen_block(const ast_block_t *ast, state_t *st)
 
 static reg_t gen_if(const ast_if_t *ast, state_t *st)
 {
-	int lbl_a = -1;
+	int lbl_a = lbl_alloc(st);
 	int lbl_b = -1;
-	reg_t r = gen_expr(ast->expr, st);
-
-	insn("TEST\t%s, %s", reg_name(r), reg_name(r));
-
-	reg_free(st, r);
-
-	lbl_a = lbl_alloc(st);
 
 	if (ast->f_stmt != NULL)
 	{
 		lbl_b = lbl_alloc(st);
 	}
 
-	insn("JZ\t%s", lbl_name(lbl_a));
+	cnd_t c = gen_expr_cnd(ast->expr, st);
+
+	if (c == CND_INV)
+	{
+		reg_t r = gen_expr(ast->expr, st);
+
+		insn("TEST\t%s, %s", reg_name(r), reg_name(r));
+		insn("JZ\t%s", lbl_name(lbl_a));
+
+		reg_free(st, r);
+	}
+	else
+	{
+		insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(lbl_a));
+	}
 
 	gen_stmt(ast->t_stmt, st);
 	if (ast->f_stmt != NULL)
@@ -664,20 +705,26 @@ static reg_t gen_while(const ast_while_t *ast, state_t *st)
 {
 	int lbl_a = lbl_alloc(st);
 	int lbl_b = lbl_alloc(st);
-	reg_t r;
-	reg_t s;
 
 	labl("%s", lbl_name(lbl_a));
 
-	r = gen_expr(ast->expr, st);
+	cnd_t c = gen_expr_cnd(ast->expr, st);
 
-	insn("TEST\t%s, %s", reg_name(r), reg_name(r));
+	if (c == CND_INV)
+	{
+		reg_t r = gen_expr(ast->expr, st);
 
-	reg_free(st, r);
+		insn("TEST\t%s, %s", reg_name(r), reg_name(r));
+		insn("JZ\t%s", lbl_name(lbl_b));
 
-	insn("JZ\t%s", lbl_name(lbl_b));
+		reg_free(st, r);
+	}
+	else
+	{
+		insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(lbl_b));
+	}
 
-	s = gen_stmt(ast->stmt, st);
+	reg_t s = gen_stmt(ast->stmt, st);
 
 	reg_free(st, s);
 
