@@ -547,9 +547,18 @@ static reg_t gen_quot(const ast_bin_t *ast, state_t *st)
 
 	if (b == REG_RAX)
 	{
-		b = reg_alloc(st);
-		insn("MOV\t%%rax, %s", reg_name(b));
-		reg_free(st, REG_RAX);
+		if (reg_reserv(st, a))
+		{
+			b = reg_alloc(st);
+			insn("MOV\t%%rax, %s", reg_name(b));
+			reg_free(st, REG_RAX);
+		}
+		else
+		{
+			insn("XCHG\t%%rax, %s", reg_name(a));
+			b = a;
+			a = REG_RAX;
+		}
 	}
 
 	if (a != REG_RAX)
