@@ -558,7 +558,7 @@ static reg_t gen_quot(const ast_bin_t *ast, state_t *st)
 	}
 	reg_free(st, a);
 
-	insn("XOR\t%%rdx, %%rdx");
+	insn("CQO");
 	insn("IDIV\t%s", reg_name(b));
 	reg_free(st, b);
 
