@@ -6,4 +6,3 @@
 void gen(const ast_t *ast);
 
 #endif
-

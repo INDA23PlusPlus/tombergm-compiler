@@ -7,4 +7,3 @@
 ast_t *parse(const tok_t *tok);
 
 #endif
-

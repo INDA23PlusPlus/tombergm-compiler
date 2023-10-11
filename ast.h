@@ -182,4 +182,3 @@ ast_t *		ast_del(ast_t *ast);
 ast_t *		ast_del_list(ast_t *ast);
 
 #endif
-

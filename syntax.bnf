@@ -35,4 +35,3 @@
 <arglst>	::= <nspc> <id> <nspc> | <nspc> <id> <nspc> "," <arglst>
 <fn>		::= <nspc> "fn" <spc> <id> <nspc> "(" <nspc> ")" <block> | <nspc> "fn" <spc> <id> <nspc> "(" <arglst> ")" <block>
 <prog>		::= <nspc> | <fn> | <fn> <prog>
-

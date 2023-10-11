@@ -194,4 +194,3 @@ tok_t *lex(const char *s)
 
 	return tok_list;
 }
-

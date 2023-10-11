@@ -660,4 +660,3 @@ ast_t *parse(const tok_t *tok)
 
 	return ast_list;
 }
-

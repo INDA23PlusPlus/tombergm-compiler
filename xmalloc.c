@@ -18,4 +18,3 @@ void xfree(void *ptr)
 	free(ptr);
 }
 
-

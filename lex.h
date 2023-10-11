@@ -6,4 +6,3 @@
 tok_t *lex(const char *s);
 
 #endif
-

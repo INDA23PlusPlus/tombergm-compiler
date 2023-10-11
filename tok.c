@@ -165,4 +165,3 @@ tok_t *tok_del_list(tok_t *tok)
 
 	return NULL;
 }
-

@@ -14,4 +14,3 @@ compiler: ast.c gen.c lex.c main.c parse.c tok.c xmalloc.c
 
 clean:
 	rm -f fib fib.s compiler
-

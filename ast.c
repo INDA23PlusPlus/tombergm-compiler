@@ -375,4 +375,3 @@ ast_t *ast_del_list(ast_t *ast)
 
 	return NULL;
 }
-

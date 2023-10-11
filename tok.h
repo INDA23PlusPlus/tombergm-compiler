@@ -120,4 +120,3 @@ tok_t *		tok_del(tok_t *tok);
 tok_t *		tok_del_list(tok_t *tok);
 
 #endif
-

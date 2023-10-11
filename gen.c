@@ -783,4 +783,3 @@ void gen(const ast_t *ast)
 
 	state_dstr(&st);
 }
-
