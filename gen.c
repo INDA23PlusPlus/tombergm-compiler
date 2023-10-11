@@ -763,20 +763,19 @@ void gen(const ast_t *ast)
 	insn("POP\t%%rdi");
 	insn("RET");
 	insn(".size\tprint, . - print");
-	endl();
 
 	state_t st;
 	state_init(&st);
 
 	while (ast != NULL)
 	{
+		endl();
+
 		switch (ast->var)
 		{
 			case AST_FN	: gen_fn(ast_as_fn(ast), &st);	break;
 			default		:				break;
 		}
-
-		endl();
 
 		ast = ast->next;
 	}
