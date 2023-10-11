@@ -306,7 +306,7 @@ static ast_t *parse_expr(const tok_t **tokp)
 		{
 			tok_push(&opstk, tok_dup(tok));
 
-			if (pre != NULL && !is_op(pre))
+			if (pre != NULL && !is_op(pre) && !is_lparen(pre))
 			{
 				tok_push(&fnstk, &tok_new_call(0)->tok);
 			}
