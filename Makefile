@@ -1,18 +1,20 @@
 CFLAGS	= -Wall -Og -g
 ASFLAGS	= -Wall -g
 
+PROGS	= fib prime
+
 .PHONY: all clean
 
-all: fib
+all: $(PROGS)
 
-fib: fib.s
+$(PROGS): %: %.s
 	$(LINK.s) -o $@ $^
 
-fib.s: fib.dpp compiler
+$(PROGS:%=%.s): %.s: %.dpp compiler
 	./compiler $(DPPFLAGS) -o $@ $<
 
 compiler: ast.c gen.c lex.c main.c parse.c tok.c xmalloc.c
 	$(LINK.c) -o $@ $^
 
 clean:
-	rm -f fib fib.s compiler
+	rm -f $(PROGS:%=%.s) $(PROGS) compiler
