@@ -1,47 +1,27 @@
 fn prime(n)
 {
-	if (n < 2)
-	{
-		return 0;
-	}
-
-	let m = 2;
+	let m = 3;
 	let k = n / 2;
-	let zero = 0;
-	let one = 1;
 
 	while (m < k)
 	{
-		if (n % m == zero)
+		if (n % m == 0)
 		{
-			return zero;
+			return 0;
 		}
 
-		m = m + one;
+		m = m + 2;
 	}
 
-	return one;
+	return 1;
 }
 
 fn main()
 {
-	let n = 1;
+	let n = 3;
 	let max = 100000;
-	let two = 2;
 
-	if (prime(n))
-	{
-		print(n);
-	}
-
-	n = n + 1;
-
-	if (prime(n))
-	{
-		print(n);
-	}
-
-	n = n + 1;
+	print(2);
 
 	while (n < max)
 	{
@@ -50,6 +30,6 @@ fn main()
 			print(n);
 		}
 
-		n = n + two;
+		n = n + 2;
 	}
 }
