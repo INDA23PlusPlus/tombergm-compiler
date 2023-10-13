@@ -105,12 +105,15 @@ struct def
 	reg_t		reg;
 };
 
-typedef struct
+typedef struct state state_t;
+
+struct state
 {
-	def_t *	defs;
-	int	regs[REG_MAX];
-	int	lbl;
-} state_t;
+	state_t *	next;
+	def_t *		defs;
+	int		regs[REG_MAX];
+	int		lbl;
+};
 
 static int labl(const char *fmt, ...)
 {
@@ -147,28 +150,42 @@ static int endl(void)
 	return printf("\n");
 }
 
-static void state_init(state_t *st)
+static void state_init(state_t *st, state_t *next)
 {
+	st->next = next;
+
 	st->defs = NULL;
 
-	for (reg_t i = 0; i < REG_MAX; i++)
+	if (next != NULL)
 	{
-		st->regs[i] = 0;
+		for (reg_t i = 0; i < REG_MAX; i++)
+		{
+			st->regs[i] = next->regs[i];
+		}
+
+		st->lbl = next->lbl;
 	}
+	else
+	{
+		for (reg_t i = 0; i < REG_MAX; i++)
+		{
+			st->regs[i] = 0;
+		}
 
-	st->regs[REG_RAX] = RESERV;
-	st->regs[REG_RCX] = RESERV;
-	st->regs[REG_RDX] = RESERV;
-	st->regs[REG_RSP] = RESERV;
-	st->regs[REG_RSI] = RESERV;
-	st->regs[REG_RDI] = RESERV;
-	st->regs[REG_R8] = RESERV;
-	st->regs[REG_R9] = RESERV;
+		st->regs[REG_RAX] = RESERV;
+		st->regs[REG_RCX] = RESERV;
+		st->regs[REG_RDX] = RESERV;
+		st->regs[REG_RSP] = RESERV;
+		st->regs[REG_RSI] = RESERV;
+		st->regs[REG_RDI] = RESERV;
+		st->regs[REG_R8] = RESERV;
+		st->regs[REG_R9] = RESERV;
 
-	st->lbl = 0;
+		st->lbl = 0;
+	}
 }
 
-static void state_dstr(state_t *st)
+static void state_pop(state_t *st)
 {
 	while (st->defs != NULL)
 	{
@@ -177,6 +194,11 @@ static void state_dstr(state_t *st)
 		xfree(st->defs);
 
 		st->defs = next;
+	}
+
+	if (st->next != NULL)
+	{
+		st->next->lbl = st->lbl;
 	}
 }
 
@@ -205,7 +227,14 @@ static def_t *def_lookup(const state_t *st, const char *id)
 		def = def->next;
 	}
 
-	return NULL;
+	if (st->next != NULL)
+	{
+		return def_lookup(st->next, id);
+	}
+	else
+	{
+		return NULL;
+	}
 }
 
 static const char *reg_name(reg_t r)
@@ -684,16 +713,47 @@ static reg_t gen_block(const ast_block_t *ast, state_t *st)
 {
 	const ast_t *stmt = ast->stmt;
 
+	state_t block_st;
+	state_init(&block_st, st);
+
 	while (stmt != NULL)
 	{
-		reg_t r = gen_stmt(stmt, st);
+		reg_t r = gen_stmt(stmt, &block_st);
 
-		reg_free(st, r);
+		reg_free(&block_st, r);
 
 		stmt = stmt->next;
 	}
 
+	state_pop(&block_st);
+
 	return REG_INV;
+}
+
+static reg_t gen_let(const ast_let_t *ast, state_t *st)
+{
+	const ast_id_t *id = ast_as_id(ast->id);
+	const ast_t *expr = ast->expr;
+
+	reg_t r;
+
+	if (expr != NULL)
+	{
+		reg_t a = gen_expr(expr, st);
+
+		r = reg_realloc(st, &a);
+	}
+	else
+	{
+		r = reg_alloc(st);
+	}
+
+	def_add(st, id->id, r);
+
+	reg_set_reserv(st, r);
+	reg_set_noclob(st, r);
+
+	return r;
 }
 
 static reg_t gen_if(const ast_if_t *ast, state_t *st)
@@ -796,6 +856,7 @@ static reg_t gen_stmt(const ast_t *ast, state_t *st)
 	switch (ast->var)
 	{
 		case AST_BLOCK	: return gen_block(ast_as_block(ast), st);
+		case AST_LET	: return gen_let(ast_as_let(ast), st);
 		case AST_IF	: return gen_if(ast_as_if(ast), st);
 		case AST_WHILE	: return gen_while(ast_as_while(ast), st);
 		case AST_RET	: return gen_ret(ast_as_ret(ast), st);
@@ -812,8 +873,7 @@ static reg_t gen_fn(const ast_fn_t *ast, state_t *st)
 	labl("%s", id);
 
 	state_t fn_st;
-	state_init(&fn_st);
-	fn_st.lbl = st->lbl;
+	state_init(&fn_st, st);
 
 	int narg = 0;
 	ast_t *arg = ast->arg;
@@ -835,9 +895,7 @@ static reg_t gen_fn(const ast_fn_t *ast, state_t *st)
 	insn("RET");
 	insn(".size\t%s, . - %s", id, id);
 
-	st->lbl = fn_st.lbl;
-
-	state_dstr(&fn_st);
+	state_pop(&fn_st);
 
 	return REG_INV;
 }
@@ -864,7 +922,7 @@ void gen(const ast_t *ast)
 	insn(".size\tprint, . - print");
 
 	state_t st;
-	state_init(&st);
+	state_init(&st, NULL);
 
 	while (ast != NULL)
 	{
@@ -879,5 +937,5 @@ void gen(const ast_t *ast)
 		ast = ast->next;
 	}
 
-	state_dstr(&st);
+	state_pop(&st);
 }

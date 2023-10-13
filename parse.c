@@ -93,6 +93,7 @@ static inline int is_val(const tok_t *tok)
 			tok->var == TOK_INT	||
 			tok->var == TOK_ID
 		);
+
 }
 
 static inline int is_op(const tok_t *tok)
