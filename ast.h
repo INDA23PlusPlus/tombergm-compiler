@@ -9,10 +9,14 @@ typedef enum
 	AST_CONST,
 	AST_ID,
 	AST_CALL,
+	AST_NOT,
 	AST_SET,
 	AST_EQ,
+	AST_NE,
 	AST_LT,
+	AST_LE,
 	AST_GT,
+	AST_GE,
 	AST_SUM,
 	AST_DIFF,
 	AST_PROD,
@@ -53,6 +57,12 @@ typedef struct
 	ast_t *		arg;
 	int		narg;
 } ast_call_t;
+
+typedef struct
+{
+	ast_t		ast;
+	ast_t *		expr;
+} ast_un_t;
 
 typedef struct
 {
@@ -116,6 +126,7 @@ typedef struct
 #define ast_as_const(v) ast_as(const, v)
 #define ast_as_id(v) ast_as(id, v)
 #define ast_as_call(v) ast_as(call, v)
+#define ast_as_un(v) ast_as(un, v)
 #define ast_as_bin(v) ast_as(bin, v)
 #define ast_as_block(v) ast_as(block, v)
 #define ast_as_let(v) ast_as(let, v)

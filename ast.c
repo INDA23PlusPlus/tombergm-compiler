@@ -9,10 +9,14 @@ static const char *op_sym(ast_var_t var)
 {
 	switch (var)
 	{
+		case AST_NOT	: return "!";
 		case AST_SET	: return "=";
 		case AST_EQ	: return "==";
+		case AST_NE	: return "!=";
 		case AST_LT	: return "<";
+		case AST_LE	: return "<=";
 		case AST_GT	: return ">";
+		case AST_GE	: return ">=";
 		case AST_SUM	: return "+";
 		case AST_DIFF	: return "-";
 		case AST_PROD	: return "*";
@@ -55,10 +59,18 @@ void ast_print(const ast_t *ast)
 
 			fprintf(stderr, ")");
 		}			break;
+		case AST_NOT	:
+		{
+			fprintf(stderr, "%s", op_sym(ast->var));
+			ast_print(ast_as_un(ast)->expr);
+		}			break;
 		case AST_SET	:
 		case AST_EQ	:
+		case AST_NE	:
 		case AST_LT	:
+		case AST_LE	:
 		case AST_GT	:
+		case AST_GE	:
 		case AST_SUM	:
 		case AST_DIFF	:
 		case AST_PROD	:
@@ -168,10 +180,14 @@ ast_t *ast_new(ast_var_t var)
 		case AST_CONST	: size = sizeof(ast_const_t);	break;
 		case AST_ID	: size = sizeof(ast_id_t);	break;
 		case AST_CALL	: size = sizeof(ast_call_t);	break;
+		case AST_NOT	: size = sizeof(ast_un_t);	break;
 		case AST_SET	:
 		case AST_EQ	:
+		case AST_NE	:
 		case AST_LT	:
+		case AST_LE	:
 		case AST_GT	:
+		case AST_GE	:
 		case AST_SUM	:
 		case AST_DIFF	:
 		case AST_PROD	:

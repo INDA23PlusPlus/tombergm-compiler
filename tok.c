@@ -21,10 +21,14 @@ void tok_print(const tok_t *tok)
 		{
 			fprintf(stderr, "(%i)", tok_as_call(tok)->narg);
 		}						break;
+		case TOK_EX	: fprintf(stderr, "!");		break;
 		case TOK_EQ	: fprintf(stderr, "=");		break;
 		case TOK_LT	: fprintf(stderr, "<");		break;
 		case TOK_GT	: fprintf(stderr, ">");		break;
+		case TOK_LTEQ	: fprintf(stderr, "<=");	break;
+		case TOK_GTEQ	: fprintf(stderr, ">=");	break;
 		case TOK_2EQ	: fprintf(stderr, "==");	break;
+		case TOK_EXEQ	: fprintf(stderr, "!=");	break;
 		case TOK_PLUS	: fprintf(stderr, "+");		break;
 		case TOK_MINUS	: fprintf(stderr, "-");		break;
 		case TOK_ASTER	: fprintf(stderr, "*");		break;

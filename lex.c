@@ -76,6 +76,16 @@ static tok_t *lex_sym(const char **sp)
 	tok_var_t var;
 	switch (s++[0])
 	{
+		case '!'	:
+		{
+			var = TOK_EX;
+
+			switch (s++[0])
+			{
+				case '='	: var = TOK_EXEQ;	break;
+				default		: s--;
+			}
+		}					break;
 		case '='	:
 		{
 			var = TOK_EQ;
@@ -86,8 +96,26 @@ static tok_t *lex_sym(const char **sp)
 				default		: s--;			break;
 			}
 		}					break;
-		case '<'	: var = TOK_LT;		break;
-		case '>'	: var = TOK_GT;		break;
+		case '<'	:
+		{
+			var = TOK_LT;
+
+			switch (s++[0])
+			{
+				case '='	: var = TOK_LTEQ;	break;
+				default		: s--;			break;
+			}
+		}					break;
+		case '>'	:
+		{
+			var = TOK_GT;
+
+			switch (s++[0])
+			{
+				case '='	: var = TOK_GTEQ;	break;
+				default		: s--;
+			}
+		}					break;
 		case '+'	: var = TOK_PLUS;	break;
 		case '-'	: var = TOK_MINUS;	break;
 		case '*'	: var = TOK_ASTER;	break;

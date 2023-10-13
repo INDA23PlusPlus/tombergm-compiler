@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
+#include "misc.h"
 #include "xmalloc.h"
 
 typedef enum
@@ -202,6 +203,20 @@ static cnd_t cnd_neg(cnd_t c)
 		case CND_LE	: return CND_GT;
 		case CND_GT	: return CND_LE;
 		case CND_GE	: return CND_LT;
+		default		: return CND_INV;
+	}
+}
+
+static cnd_t ast_cnd(ast_var_t var)
+{
+	switch (var)
+	{
+		case AST_EQ	: return CND_EQ;
+		case AST_NE	: return CND_NE;
+		case AST_LT	: return CND_LT;
+		case AST_LE	: return CND_LE;
+		case AST_GT	: return CND_GT;
+		case AST_GE	: return CND_GE;
 		default		: return CND_INV;
 	}
 }
@@ -673,25 +688,85 @@ static val_t gen_set(const ast_bin_t *ast, state_t *st)
 	return a;
 }
 
+static void pick_lreg(const state_t *st, val_t *r, const char **l)
+{
+	struct
+	{
+		reg_t		reg;
+		const char *	lreg;
+	}
+	lregs[] =
+	{
+		{REG_RAX, "%al"},
+		{REG_RBX, "%bl"},
+		{REG_RCX, "%cl"},
+		{REG_RDX, "%dl"},
+	};
+
+	int k = 0;
+	for (int i = 0; i < ARRAY_SIZE(lregs); i++)
+	{
+		if (!reg_allocd(st, lregs[i].reg))
+		{
+			k = i;
+			break;
+		}
+	}
+
+	*r = val_reg(lregs[k].reg);
+	*l = lregs[k].lreg;
+}
+
+static cnd_t gen_expr_cnd(const ast_t *ast, state_t *st);
+
+static val_t gen_not(const ast_t *ast, state_t *st)
+{
+	val_t r;
+	const char *l;
+	pick_lreg(st, &r, &l);
+
+	if (reg_allocd(st, r.reg.reg))
+	{
+		insn("PUSH\t%s", val_asm(&r));
+	}
+
+	cnd_t c = cnd_neg(gen_expr_cnd(ast, st));
+	val_t v = val_reg(reg_alloc(st));
+
+	insn("SET%s\t%s", cnd_mnem[c], l);
+	insn("MOVZX\t%s, %s", l, val_asm(&v));
+
+	if (reg_allocd(st, r.reg.reg))
+	{
+		insn("POP\t%s", val_asm(&r));
+	}
+
+	return v;
+}
+
 static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c);
 
 static val_t gen_cmp(const ast_t *ast, state_t *st, cnd_t c)
 {
-	if (reg_allocd(st, REG_RAX))
+	val_t r;
+	const char *l;
+	pick_lreg(st, &r, &l);
+
+	if (reg_allocd(st, r.reg.reg))
 	{
-		insn("PUSH\t%%rax");
+		insn("PUSH\t%s", val_asm(&r));
 	}
 
 	gen_cmp_cnd(ast, st, c);
 
 	val_t v = val_reg(reg_alloc(st));
 
-	insn("SET%s\t%%al", cnd_mnem[c]);
-	insn("MOVZX\t%%al, %s", val_asm(&v));
+	insn("SET%s\t%s", cnd_mnem[c], l);
+	insn("MOVZX\t%s, %s", l, val_asm(&v));
 
-	if (reg_allocd(st, REG_RAX))
+	if (reg_allocd(st, r.reg.reg))
 	{
-		insn("POP\t%%rax");
+		insn("POP\t%s", val_asm(&r));
 	}
 
 	return v;
@@ -834,12 +909,31 @@ static val_t gen_expr(const ast_t *ast, state_t *st)
 {
 	switch (ast->var)
 	{
+		case AST_NOT	:
+		{
+			ast_t *expr = ast_as_un(ast)->expr;
+
+			cnd_t c = cnd_neg(ast_cnd(expr->var));
+
+			if (c != CND_INV)
+			{
+				return gen_cmp(expr, st, c);
+			}
+			else
+			{
+				return gen_not(expr, st);
+			}
+		}
 		case AST_CONST	: return gen_const(ast_as_const(ast), st);
 		case AST_ID	: return gen_id(ast_as_id(ast), st);
 		case AST_CALL	: return gen_call(ast_as_call(ast), st);
 		case AST_SET	: return gen_set(ast_as_bin(ast), st);
-		case AST_EQ	: return gen_cmp(ast, st, CND_EQ);
-		case AST_LT	: return gen_cmp(ast, st, CND_LT);
+		case AST_EQ	:
+		case AST_NE	:
+		case AST_LT	:
+		case AST_LE	:
+		case AST_GT	:
+		case AST_GE	: return gen_cmp(ast, st, ast_cnd(ast->var));
 		case AST_SUM	: return gen_sum(ast_as_bin(ast), st);
 		case AST_DIFF	: return gen_diff(ast_as_bin(ast), st);
 		case AST_PROD	: return gen_prod(ast_as_bin(ast), st);
@@ -847,6 +941,25 @@ static val_t gen_expr(const ast_t *ast, state_t *st)
 		case AST_REM	: return gen_rem(ast_as_bin(ast), st);
 		default		: return val_void();
 	}
+}
+
+static cnd_t gen_test_cnd(const ast_t *ast, state_t *st)
+{
+	val_t v = gen_expr(ast, st);
+
+	switch (ast->var)
+	{
+		case AST_SUM	:
+		case AST_DIFF	:	break;
+		default		:
+		{
+			insn("TEST\t%s, %s", val_asm(&v), val_asm(&v));
+		}			break;
+	}
+
+	val_free(st, &v);
+
+	return CND_NE;
 }
 
 static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c)
@@ -890,10 +1003,19 @@ static cnd_t gen_expr_cnd(const ast_t *ast, state_t *st)
 {
 	switch (ast->var)
 	{
+		case AST_NOT	:
+		{
+			ast_t *expr = ast_as_un(ast)->expr;
+
+			return cnd_neg(gen_expr_cnd(expr, st));
+		}
 		case AST_EQ	: return gen_cmp_cnd(ast, st, CND_EQ);
+		case AST_NE	: return gen_cmp_cnd(ast, st, CND_NE);
 		case AST_LT	: return gen_cmp_cnd(ast, st, CND_LT);
+		case AST_LE	: return gen_cmp_cnd(ast, st, CND_LE);
 		case AST_GT	: return gen_cmp_cnd(ast, st, CND_GT);
-		default		: return CND_INV;
+		case AST_GE	: return gen_cmp_cnd(ast, st, CND_GE);
+		default		: return gen_test_cnd(ast, st);
 	}
 }
 
@@ -956,19 +1078,7 @@ static val_t gen_if(const ast_if_t *ast, state_t *st)
 
 	cnd_t c = gen_expr_cnd(ast->expr, st);
 
-	if (c == CND_INV)
-	{
-		val_t v = gen_expr(ast->expr, st);
-
-		insn("TEST\t%s, %s", val_asm(&v), val_asm(&v));
-		insn("JZ\t%s", lbl_name(lbl_a));
-
-		val_free(st, &v);
-	}
-	else
-	{
-		insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(lbl_a));
-	}
+	insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(lbl_a));
 
 	{
 		val_t v = gen_stmt(ast->t_stmt, st);
@@ -1002,19 +1112,7 @@ static val_t gen_while(const ast_while_t *ast, state_t *st)
 
 	cnd_t c = gen_expr_cnd(ast->expr, st);
 
-	if (c == CND_INV)
-	{
-		val_t v = gen_expr(ast->expr, st);
-
-		insn("TEST\t%s, %s", val_asm(&v), val_asm(&v));
-		insn("JZ\t%s", lbl_name(lbl_b));
-
-		val_free(st, &v);
-	}
-	else
-	{
-		insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(lbl_b));
-	}
+	insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(lbl_b));
 
 	{
 		val_t v = gen_stmt(ast->stmt, st);

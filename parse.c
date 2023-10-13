@@ -48,8 +48,11 @@ static inline int op_left(const tok_t *tok)
 {
 	return
 		tok->var == TOK_2EQ	||
+		tok->var == TOK_EXEQ	||
 		tok->var == TOK_LT	||
+		tok->var == TOK_LTEQ	||
 		tok->var == TOK_GT	||
+		tok->var == TOK_GTEQ	||
 		tok->var == TOK_PLUS	||
 		tok->var == TOK_MINUS	||
 		tok->var == TOK_ASTER	||
@@ -69,14 +72,18 @@ static inline int op_prec(const tok_t *tok)
 	{
 		default		: return -1;
 		case TOK_EQ	: return 0;
-		case TOK_2EQ	: return 1;
+		case TOK_2EQ	:
+		case TOK_EXEQ	: return 1;
 		case TOK_LT	:
-		case TOK_GT	: return 2;
+		case TOK_LTEQ	:
+		case TOK_GT	:
+		case TOK_GTEQ	: return 2;
 		case TOK_PLUS	:
 		case TOK_MINUS	: return 3;
 		case TOK_ASTER	:
 		case TOK_SLASH	:
 		case TOK_PRCENT	: return 4;
+		case TOK_EX	: return 5;
 	}
 }
 
@@ -103,16 +110,29 @@ static inline int is_op(const tok_t *tok)
 	return
 		tok != NULL			&&
 		(
+			tok->var == TOK_EX	||
 			tok->var == TOK_EQ	||
 			tok->var == TOK_2EQ	||
+			tok->var == TOK_EXEQ	||
 			tok->var == TOK_LT	||
+			tok->var == TOK_LTEQ	||
 			tok->var == TOK_GT	||
+			tok->var == TOK_GTEQ	||
 			tok->var == TOK_PLUS	||
 			tok->var == TOK_MINUS	||
 			tok->var == TOK_ASTER	||
 			tok->var == TOK_SLASH	||
 			tok->var == TOK_PRCENT	||
 			tok->var == TOK_COMMA
+		);
+}
+
+static inline int is_un(const tok_t *tok)
+{
+	return
+		tok != NULL			&&
+		(
+			tok->var == TOK_EX
 		);
 }
 
@@ -183,14 +203,26 @@ static int do_rparen(tok_t **opstk, tok_t **outpt)
 	return -1;
 }
 
+static inline ast_var_t tok_to_un(tok_var_t var)
+{
+	switch (var)
+	{
+		case TOK_EX	: return AST_NOT;
+		default		: return 0;
+	}
+}
+
 static inline ast_var_t tok_to_bin(tok_var_t var)
 {
 	switch (var)
 	{
 		case TOK_EQ	: return AST_SET;
 		case TOK_2EQ	: return AST_EQ;
+		case TOK_EXEQ	: return AST_NE;
 		case TOK_LT	: return AST_LT;
+		case TOK_LTEQ	: return AST_LE;
 		case TOK_GT	: return AST_GT;
+		case TOK_GTEQ	: return AST_GE;
 		case TOK_PLUS	: return AST_SUM;
 		case TOK_MINUS	: return AST_DIFF;
 		case TOK_ASTER	: return AST_PROD;
@@ -250,10 +282,29 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 
 			return &ast->ast;
 		}
+		case TOK_EX	:
+		{
+			ast_var_t var = tok_to_un(tok->var);
+			ast_un_t *ast = ast_as_un(ast_new(var));
+
+			ast->expr = parse_expr_pn(tokp);
+
+			if (ast->expr == NULL)
+			{
+				ast_del(&ast->ast);
+
+				return NULL;
+			}
+
+			return &ast->ast;
+		}
 		case TOK_EQ	:
 		case TOK_2EQ	:
+		case TOK_EXEQ	:
 		case TOK_LT	:
+		case TOK_LTEQ	:
 		case TOK_GT	:
+		case TOK_GTEQ	:
 		case TOK_PLUS	:
 		case TOK_MINUS	:
 		case TOK_ASTER	:
@@ -306,7 +357,14 @@ static ast_t *parse_expr(const tok_t **tokp)
 		}
 		else if (is_op(tok))
 		{
-			do_op(&opstk, &outpt, tok);
+			if (is_un(tok))
+			{
+				tok_push(&opstk, tok_dup(tok));
+			}
+			else
+			{
+				do_op(&opstk, &outpt, tok);
+			}
 		}
 		else if (is_lparen(tok))
 		{
