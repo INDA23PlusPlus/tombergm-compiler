@@ -73,7 +73,7 @@ static inline val_t val_void(void)
 	return v;
 }
 
-static inline val_t val_con(int val)
+static inline val_t val_con(int64_t val)
 {
 	val_t v;
 
@@ -102,6 +102,26 @@ static inline val_t val_mem(reg_t reg, int64_t off)
 	v.mem.off = off;
 
 	return v;
+}
+
+static inline int val_is_void(const val_t *v)
+{
+	return v->var == VAL_VOID;
+}
+
+static inline int val_is_con(const val_t *v)
+{
+	return v->var == VAL_CON;
+}
+
+static inline int val_is_reg(const val_t *v)
+{
+	return v->var == VAL_REG;
+}
+
+static inline int val_is_mem(const val_t *v)
+{
+	return v->var == VAL_MEM;
 }
 
 static int val_eq(const val_t *a, const val_t *b)
@@ -461,7 +481,7 @@ static void gen_mov(const val_t *a, const val_t *b)
 {
 	val_t zero = val_con(0);
 
-	if (val_eq(a, &zero) && b->var == VAL_REG)
+	if (val_eq(a, &zero) && val_is_reg(b))
 	{
 		insn("XOR\t%s, %s", val_asm(b), val_asm(b));
 	}
@@ -473,7 +493,7 @@ static void gen_mov(const val_t *a, const val_t *b)
 
 static val_t reg_realloc(state_t *st, val_t *a)
 {
-	if (a->var == VAL_REG && !reg_reserv(st, a->reg.reg))
+	if (val_is_reg(a) && !reg_reserv(st, a->reg.reg))
 	{
 		return *a;
 	}
@@ -488,11 +508,11 @@ static val_t reg_realloc(state_t *st, val_t *a)
 
 static val_t reg_realloc2(state_t *st, val_t *a, val_t *b)
 {
-	if (a->var == VAL_REG && !reg_reserv(st, a->reg.reg))
+	if (val_is_reg(a) && !reg_reserv(st, a->reg.reg))
 	{
 		return *a;
 	}
-	else if (b->var == VAL_REG && !reg_reserv(st, b->reg.reg))
+	else if (val_is_reg(b) && !reg_reserv(st, b->reg.reg))
 	{
 		val_t t = *a;
 		*a = *b;
@@ -536,7 +556,7 @@ static val_t gen_id(const ast_id_t *ast, state_t *st)
 
 	val_t v = def->val;
 
-	if (v.var == VAL_REG)
+	if (val_is_reg(&v))
 	{
 		reg_set_allocd(st, v.reg.reg);
 	}
@@ -681,26 +701,26 @@ static val_t gen_sum(const ast_bin_t *ast, state_t *st)
 {
 	val_t a = gen_expr(ast->l, st);
 	val_t b = gen_expr(ast->r, st);
-	val_t r = reg_realloc2(st, &a, &b);
+	val_t v = reg_realloc2(st, &a, &b);
 
-	insn("ADD\t%s, %s", val_asm(&b), val_asm(&r));
+	insn("ADD\t%s, %s", val_asm(&b), val_asm(&v));
 
 	val_free(st, &b);
 
-	return r;
+	return v;
 }
 
 static val_t gen_diff(const ast_bin_t *ast, state_t *st)
 {
 	val_t a = gen_expr(ast->l, st);
 	val_t b = gen_expr(ast->r, st);
-	val_t r = reg_realloc(st, &a);
+	val_t v = reg_realloc(st, &a);
 
-	insn("SUB\t%s, %s", val_asm(&b), val_asm(&r));
+	insn("SUB\t%s, %s", val_asm(&b), val_asm(&v));
 
 	val_free(st, &b);
 
-	return r;
+	return v;
 }
 
 static val_t gen_muldiv(const ast_bin_t *ast, state_t *st, int mul, reg_t r)
@@ -729,7 +749,7 @@ static val_t gen_muldiv(const ast_bin_t *ast, state_t *st, int mul, reg_t r)
 			a = b;
 			b = t;
 		}
-		else if (a.var != VAL_REG || reg_reserv(st, a.reg.reg))
+		else if (!val_is_reg(&a) || reg_reserv(st, a.reg.reg))
 		{
 			val_free(st, &b);
 			b = val_reg(reg_alloc(st));
@@ -750,7 +770,7 @@ static val_t gen_muldiv(const ast_bin_t *ast, state_t *st, int mul, reg_t r)
 	}
 	val_free(st, &a);
 
-	if (b.var == VAL_CON)
+	if (val_is_con(&b))
 	{
 		val_t t = val_reg(reg_alloc(st));
 		gen_mov(&b, &t);
@@ -886,9 +906,9 @@ static val_t gen_block(const ast_block_t *ast, state_t *st)
 
 	while (stmt != NULL)
 	{
-		val_t r = gen_stmt(stmt, &block_st);
+		val_t v = gen_stmt(stmt, &block_st);
 
-		val_free(&block_st, &r);
+		val_free(&block_st, &v);
 
 		stmt = stmt->next;
 	}
@@ -1010,25 +1030,25 @@ static val_t gen_while(const ast_while_t *ast, state_t *st)
 
 static val_t gen_ret(const ast_ret_t *ast, state_t *st)
 {
-	val_t r = val_reg(REG_RAX);
+	val_t v = val_reg(REG_RAX);
 
 	if (ast->expr != NULL)
 	{
-		val_t v = gen_expr(ast->expr, st);
+		val_t t = gen_expr(ast->expr, st);
 
-		if (!val_eq(&v, &r))
+		if (!val_eq(&t, &v))
 		{
-			gen_mov(&v, &r);
+			gen_mov(&t, &v);
 		}
 
-		val_free(st, &v);
+		val_free(st, &t);
 	}
 
 	insn("RET");
 
-	reg_set_allocd(st, r.reg.reg);
+	reg_set_allocd(st, v.reg.reg);
 
-	return r;
+	return v;
 }
 
 static val_t gen_stmt(const ast_t *ast, state_t *st)
