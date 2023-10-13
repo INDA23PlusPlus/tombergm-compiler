@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -10,7 +11,7 @@ void tok_print(const tok_t *tok)
 	{
 		case TOK_INT	:
 		{
-			fprintf(stderr, "%i", tok_as_int(tok)->val);
+			fprintf(stderr, "%" PRIi64, tok_as_int(tok)->val);
 		}						break;
 		case TOK_ID	:
 		{

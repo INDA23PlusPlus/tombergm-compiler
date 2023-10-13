@@ -1,3 +1,4 @@
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
@@ -27,7 +28,7 @@ void ast_print(const ast_t *ast)
 	{
 		case AST_CONST	:
 		{
-			fprintf(stderr, "%i", ast_as_const(ast)->val);
+			fprintf(stderr, "%" PRIi64, ast_as_const(ast)->val);
 		}			break;
 		case AST_ID	:
 		{
