@@ -173,6 +173,27 @@ tok_t *lex(const char *s)
 			s++;
 		}
 
+		if (strncmp(s, "/*", 2) == 0)
+		{
+			s += 2;
+
+			while (s[0] != '\0')
+			{
+				if (strncmp(s, "*/", 2) == 0)
+				{
+					s += 2;
+
+					break;
+				}
+				else
+				{
+					s++;
+				}
+			}
+
+			continue;
+		}
+
 		tok_t *tok = NULL;
 
 		for (int i = 0; i < ARRAY_SIZE(lex_fns); i++)
