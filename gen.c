@@ -1167,14 +1167,9 @@ void gen(const ast_t *ast)
 	endl();
 	insn(".type\tprint, @function");
 	labl("print");
-	insn("PUSH\t%%rdi");
-	insn("PUSH\t%%rsi");
 	insn("MOV\t%%rdi, %%rsi");
 	insn("LEA\t.LC0(%%rip), %%rdi");
-	insn("CALL\tprintf");
-	insn("POP\t%%rsi");
-	insn("POP\t%%rdi");
-	insn("RET");
+	insn("JMP\tprintf");
 	insn(".size\tprint, . - print");
 
 	state_t st;
