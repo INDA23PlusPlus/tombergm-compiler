@@ -2,6 +2,7 @@
 #define AST_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 typedef enum
 {
@@ -36,7 +37,7 @@ struct ast
 typedef struct
 {
 	ast_t		ast;
-	int		val;
+	int64_t		val;
 } ast_const_t;
 
 typedef struct

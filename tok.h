@@ -2,6 +2,7 @@
 #define TOK_H
 
 #include <stddef.h>
+#include <stdint.h>
 
 typedef enum
 {
@@ -42,7 +43,7 @@ struct tok
 typedef struct
 {
 	tok_t		tok;
-	int		val;
+	int64_t		val;
 } tok_int_t;
 
 typedef struct

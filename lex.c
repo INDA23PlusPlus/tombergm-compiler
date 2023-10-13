@@ -34,7 +34,7 @@ static tok_t *lex_int(const char **sp)
 		return NULL;
 	}
 
-	int val = 0;
+	int64_t val = 0;
 	while (is_digit(s[0]))
 	{
 		val = val * 10 + (s[0] - '0');
