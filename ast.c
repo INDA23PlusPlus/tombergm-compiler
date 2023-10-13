@@ -16,6 +16,7 @@ static const char *op_sym(ast_var_t var)
 		case AST_DIFF	: return "-";
 		case AST_PROD	: return "*";
 		case AST_QUOT	: return "/";
+		case AST_REM	: return "%";
 		default		: return "";
 	}
 }
@@ -61,6 +62,7 @@ void ast_print(const ast_t *ast)
 		case AST_DIFF	:
 		case AST_PROD	:
 		case AST_QUOT	:
+		case AST_REM	:
 		{
 			fprintf(stderr, "(");
 			ast_print(ast_as_bin(ast)->l);
@@ -153,7 +155,6 @@ void ast_print(const ast_t *ast)
 			fprintf(stderr, ") ");
 			ast_print(ast_as_fn(ast)->body);
 		}			break;
-		default		:	break;
 	}
 }
 
@@ -173,7 +174,8 @@ ast_t *ast_new(ast_var_t var)
 		case AST_SUM	:
 		case AST_DIFF	:
 		case AST_PROD	:
-		case AST_QUOT	: size = sizeof(ast_bin_t);	break;
+		case AST_QUOT	:
+		case AST_REM	: size = sizeof(ast_bin_t);	break;
 		case AST_BLOCK	: size = sizeof(ast_block_t);	break;
 		case AST_LET	: size = sizeof(ast_let_t);	break;
 		case AST_IF	: size = sizeof(ast_if_t);	break;

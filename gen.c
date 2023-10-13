@@ -665,6 +665,67 @@ static reg_t gen_quot(const ast_bin_t *ast, state_t *st)
 	return r;
 }
 
+static reg_t gen_rem(const ast_bin_t *ast, state_t *st)
+{
+	if (reg_allocd(st, REG_RAX))
+	{
+		insn("PUSH\t%%rax");
+	}
+	if (reg_allocd(st, REG_RDX))
+	{
+		insn("PUSH\t%%rdx");
+	}
+
+	reg_t a = gen_expr(ast->l, st);
+	reg_t b = gen_expr(ast->r, st);
+	reg_t r;
+
+	if (b == REG_RAX)
+	{
+		if (reg_reserv(st, a))
+		{
+			b = reg_alloc(st);
+			insn("MOV\t%%rax, %s", reg_name(b));
+			reg_free(st, REG_RAX);
+		}
+		else
+		{
+			insn("XCHG\t%%rax, %s", reg_name(a));
+			b = a;
+			a = REG_RAX;
+		}
+	}
+
+	if (a != REG_RAX)
+	{
+		insn("MOV\t%s, %%rax", reg_name(a));
+	}
+	reg_free(st, a);
+
+	insn("CQO");
+	insn("IDIV\t%s", reg_name(b));
+	reg_free(st, b);
+
+	if (reg_allocd(st, REG_RDX))
+	{
+		r = reg_alloc(st);
+		insn("MOV\t%%rdx, %s", reg_name(r));
+
+		insn("POP\t%%rdx");
+	}
+	else
+	{
+		r = REG_RDX;
+		reg_set_allocd(st, r);
+	}
+	if (reg_allocd(st, REG_RAX))
+	{
+		insn("POP\t%%rdx");
+	}
+
+	return r;
+}
+
 static reg_t gen_expr(const ast_t *ast, state_t *st)
 {
 	switch (ast->var)
@@ -679,6 +740,7 @@ static reg_t gen_expr(const ast_t *ast, state_t *st)
 		case AST_DIFF	: return gen_diff(ast_as_bin(ast), st);
 		case AST_PROD	: return gen_prod(ast_as_bin(ast), st);
 		case AST_QUOT	: return gen_quot(ast_as_bin(ast), st);
+		case AST_REM	: return gen_rem(ast_as_bin(ast), st);
 		default		: return REG_INV;
 	}
 }

@@ -16,6 +16,7 @@ typedef enum
 	AST_DIFF,
 	AST_PROD,
 	AST_QUOT,
+	AST_REM,
 	AST_BLOCK,
 	AST_LET,
 	AST_IF,

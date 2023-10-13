@@ -28,6 +28,7 @@ void tok_print(const tok_t *tok)
 		case TOK_MINUS	: fprintf(stderr, "-");		break;
 		case TOK_ASTER	: fprintf(stderr, "*");		break;
 		case TOK_SLASH	: fprintf(stderr, "/");		break;
+		case TOK_PRCENT	: fprintf(stderr, "%%");	break;
 		case TOK_COMMA	: fprintf(stderr, ",");		break;
 		case TOK_SEMICO	: fprintf(stderr, ";");		break;
 		case TOK_LPAREN	: fprintf(stderr, "(");		break;

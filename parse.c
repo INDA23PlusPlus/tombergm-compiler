@@ -54,6 +54,7 @@ static inline int op_left(const tok_t *tok)
 		tok->var == TOK_MINUS	||
 		tok->var == TOK_ASTER	||
 		tok->var == TOK_SLASH	||
+		tok->var == TOK_PRCENT	||
 		tok->var == TOK_COMMA	;
 }
 
@@ -74,7 +75,8 @@ static inline int op_prec(const tok_t *tok)
 		case TOK_PLUS	:
 		case TOK_MINUS	: return 3;
 		case TOK_ASTER	:
-		case TOK_SLASH	: return 4;
+		case TOK_SLASH	:
+		case TOK_PRCENT	: return 4;
 	}
 }
 
@@ -109,6 +111,7 @@ static inline int is_op(const tok_t *tok)
 			tok->var == TOK_MINUS	||
 			tok->var == TOK_ASTER	||
 			tok->var == TOK_SLASH	||
+			tok->var == TOK_PRCENT	||
 			tok->var == TOK_COMMA
 		);
 }
@@ -192,6 +195,7 @@ static inline ast_var_t tok_to_bin(tok_var_t var)
 		case TOK_MINUS	: return AST_DIFF;
 		case TOK_ASTER	: return AST_PROD;
 		case TOK_SLASH	: return AST_QUOT;
+		case TOK_PRCENT	: return AST_REM;
 		default		: return 0;
 	}
 }
@@ -254,6 +258,7 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 		case TOK_MINUS	:
 		case TOK_ASTER	:
 		case TOK_SLASH	:
+		case TOK_PRCENT	:
 		{
 			ast_var_t var = tok_to_bin(tok->var);
 			ast_bin_t *ast = ast_as_bin(ast_new(var));
