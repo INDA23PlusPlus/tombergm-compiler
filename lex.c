@@ -25,50 +25,6 @@ static inline int is_id(char c)
 	return is_alpha(c) || is_digit(c) || is_idsym(c);
 }
 
-static tok_t *lex_int(const char **sp)
-{
-	const char *s = *sp;
-
-	if (!is_digit(s[0]))
-	{
-		return NULL;
-	}
-
-	int64_t val = 0;
-	while (is_digit(s[0]))
-	{
-		val = val * 10 + (s[0] - '0');
-		s++;
-	}
-
-	*sp = s;
-
-	return &tok_new_int(val)->tok;
-}
-
-static tok_t *lex_id(const char **sp)
-{
-	const char *s = *sp;
-
-	if (is_digit(s[0]) || !is_id(s[0]))
-	{
-		return NULL;
-	}
-
-	const char *ss = s;
-	int sl = 0;
-
-	while (is_id(s[0]))
-	{
-		s++;
-		sl++;
-	}
-
-	*sp = s;
-
-	return &tok_new_id(ss, sl)->tok;
-}
-
 static tok_t *lex_sym(const char **sp)
 {
 	const char *s = *sp;
@@ -135,60 +91,112 @@ static tok_t *lex_sym(const char **sp)
 	return tok_new(var);
 }
 
+static tok_t *lex_int(const char **sp)
+{
+	const char *s = *sp;
+
+	if (!is_digit(s[0]))
+	{
+		return NULL;
+	}
+
+	int64_t val = 0;
+	while (is_digit(s[0]))
+	{
+		val = val * 10 + (s[0] - '0');
+		s++;
+	}
+
+	*sp = s;
+
+	return &tok_new_int(val)->tok;
+}
+
 static tok_t *lex_kw(const char **sp)
 {
 	const char *s = *sp;
 
+	if (is_digit(s[0]) || !is_id(s[0]))
+	{
+		return NULL;
+	}
+
+	int sl = 0;
+
+	while (is_id(s[sl]))
+	{
+		sl++;
+	}
+
 	tok_var_t var;
 
-	if (strncmp(s, "let", 3) == 0)
+	if (sl == 3 && strncmp(s, "let", sl) == 0)
 	{
 		var = TOK_LET;
-		s += 3;
 	}
-	else if (strncmp(s, "if", 2) == 0)
+	else if (sl == 2 && strncmp(s, "if", sl) == 0)
 	{
 		var = TOK_IF;
-		s += 2;
 	}
-	else if (strncmp(s, "else", 4) == 0)
+	else if (sl == 4 && strncmp(s, "else", sl) == 0)
 	{
 		var = TOK_ELSE;
-		s += 4;
 	}
-	else if (strncmp(s, "while", 5) == 0)
+	else if (sl == 5 && strncmp(s, "while", sl) == 0)
 	{
 		var = TOK_WHILE;
-		s += 5;
 	}
-	else if(strncmp(s, "return", 6) == 0)
+	else if(sl == 6 && strncmp(s, "return", sl) == 0)
 	{
 		var = TOK_RET;
-		s += 6;
 	}
-	else if (strncmp(s, "fn", 2) == 0)
+	else if (sl == 2 && strncmp(s, "fn", sl) == 0)
 	{
 		var = TOK_FN;
-		s += 2;
 	}
 	else
 	{
 		return NULL;
 	}
 
+	s += sl;
+
 	*sp = s;
 
 	return tok_new(var);
+}
+
+static tok_t *lex_id(const char **sp)
+{
+	const char *s = *sp;
+
+	if (is_digit(s[0]) || !is_id(s[0]))
+	{
+		return NULL;
+	}
+
+	const char *ss = s;
+	int sl = 0;
+
+	while (is_id(s[0]))
+	{
+		s++;
+		sl++;
+	}
+
+	*sp = s;
+
+	return &tok_new_id(ss, sl)->tok;
 }
 
 tok_t *lex(const char *s)
 {
 	tok_t *(*lex_fns[])(const char **sp) =
 	{
-		lex_kw,
-		lex_int,
-		lex_id,
 		lex_sym,
+		lex_int,
+		lex_kw,
+		lex_id,
 	};
 
 	tok_t *tok_list = NULL;
