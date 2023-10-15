@@ -731,6 +731,7 @@ static val_t gen_not(const ast_t *ast, state_t *st)
 	}
 
 	cnd_t c = cnd_neg(gen_expr_cnd(ast, st));
+
 	val_t v = val_reg(reg_alloc(st));
 
 	insn("SET%s\t%s", cnd_mnem[c], l);
@@ -768,6 +769,78 @@ static val_t gen_cmp(const ast_t *ast, state_t *st, cnd_t c)
 	{
 		insn("POP\t%s", val_asm(&r));
 	}
+
+	return v;
+}
+
+static val_t gen_land(const ast_bin_t *ast, state_t *st)
+{
+	val_t v = val_reg(reg_alloc(st));
+	int lbl = lbl_alloc(st);
+
+	insn("XOR\t%s, %s", val_asm(&v), val_asm(&v));
+
+	cnd_t a = gen_expr_cnd(ast->l, st);
+	insn("J%s\t%s", cnd_mnem[cnd_neg(a)], lbl_name(lbl));
+
+	cnd_t b = gen_expr_cnd(ast->r, st);
+
+	{
+		val_t r;
+		const char *l;
+		pick_lreg(st, &r, &l);
+
+		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
+		{
+			insn("PUSH\t%s", val_asm(&r));
+		}
+
+		insn("SET%s\t%s", cnd_mnem[b], l);
+		insn("MOVZX\t%s, %s", l, val_asm(&r));
+
+		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
+		{
+			insn("POP\t%s", val_asm(&r));
+		}
+	}
+
+	labl("%s", lbl_name(lbl));
+
+	return v;
+}
+
+static val_t gen_lor(const ast_bin_t *ast, state_t *st)
+{
+	val_t v = val_reg(reg_alloc(st));
+	int lbl = lbl_alloc(st);
+
+	insn("MOV\t$1, %s", val_asm(&v));
+
+	cnd_t a = gen_expr_cnd(ast->l, st);
+	insn("J%s\t%s", cnd_mnem[a], lbl_name(lbl));
+
+	cnd_t b = gen_expr_cnd(ast->r, st);
+
+	{
+		val_t r;
+		const char *l;
+		pick_lreg(st, &r, &l);
+
+		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
+		{
+			insn("PUSH\t%s", val_asm(&r));
+		}
+
+		insn("SET%s\t%s", cnd_mnem[b], l);
+		insn("MOVZX\t%s, %s", l, val_asm(&r));
+
+		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
+		{
+			insn("POP\t%s", val_asm(&r));
+		}
+	}
+
+	labl("%s", lbl_name(lbl));
 
 	return v;
 }
@@ -934,6 +1007,8 @@ static val_t gen_expr(const ast_t *ast, state_t *st)
 		case AST_LE	:
 		case AST_GT	:
 		case AST_GE	: return gen_cmp(ast, st, ast_cnd(ast->var));
+		case AST_LAND	: return gen_land(ast_as_bin(ast), st);
+		case AST_LOR	: return gen_lor(ast_as_bin(ast), st);
 		case AST_SUM	: return gen_sum(ast_as_bin(ast), st);
 		case AST_DIFF	: return gen_diff(ast_as_bin(ast), st);
 		case AST_PROD	: return gen_prod(ast_as_bin(ast), st);
@@ -999,6 +1074,100 @@ static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c)
 	return c;
 }
 
+static cnd_t gen_land_cnd(const ast_bin_t *ast, state_t *st)
+{
+	int lbl_a = lbl_alloc(st);
+
+	cnd_t a = gen_expr_cnd(ast->l, st);
+	insn("J%s\t%s", cnd_mnem[cnd_neg(a)], lbl_name(lbl_a));
+
+	cnd_t b = gen_expr_cnd(ast->r, st);
+
+	if (a != b)
+	{
+		val_t r;
+		const char *l;
+		pick_lreg(st, &r, &l);
+
+		int lbl_b = lbl_alloc(st);
+		val_t v = val_reg(reg_alloc(st));
+
+		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
+		{
+			insn("PUSH\t%s", val_asm(&r));
+		}
+
+		insn("SET%s\t%s", cnd_mnem[b], l);
+		insn("MOVZX\t%s, %s", l, val_asm(&v));
+
+		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
+		{
+			insn("POP\t%s", val_asm(&r));
+		}
+
+		insn("JMP\t%s", lbl_name(lbl_b));
+		labl("%s", lbl_name(lbl_a));
+		insn("XOR\t%s, %s", val_asm(&v), val_asm(&v));
+		labl("%s", lbl_name(lbl_b));
+		insn("TEST\t%s, %s", val_asm(&v), val_asm(&v));
+
+		return CND_EQ;
+	}
+	else
+	{
+		labl("%s", lbl_name(lbl_a));
+
+		return a;
+	}
+}
+
+static cnd_t gen_lor_cnd(const ast_bin_t *ast, state_t *st)
+{
+	int lbl_a = lbl_alloc(st);
+
+	cnd_t a = gen_expr_cnd(ast->l, st);
+	insn("J%s\t%s", cnd_mnem[a], lbl_name(lbl_a));
+
+	cnd_t b = gen_expr_cnd(ast->r, st);
+
+	if (a != b)
+	{
+		val_t r;
+		const char *l;
+		pick_lreg(st, &r, &l);
+
+		int lbl_b = lbl_alloc(st);
+		val_t v = val_reg(reg_alloc(st));
+
+		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
+		{
+			insn("PUSH\t%s", val_asm(&r));
+		}
+
+		insn("SET%s\t%s", cnd_mnem[b], l);
+		insn("MOVZX\t%s, %s", l, val_asm(&v));
+
+		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
+		{
+			insn("POP\t%s", val_asm(&r));
+		}
+
+		insn("JMP\t%s", lbl_name(lbl_b));
+		labl("%s", lbl_name(lbl_a));
+		insn("XOR\t%s, %s", val_asm(&v), val_asm(&v));
+		labl("%s", lbl_name(lbl_b));
+		insn("TEST\t%s, %s", val_asm(&v), val_asm(&v));
+
+		return CND_EQ;
+	}
+	else
+	{
+		labl("%s", lbl_name(lbl_a));
+
+		return a;
+	}
+}
+
 static cnd_t gen_expr_cnd(const ast_t *ast, state_t *st)
 {
 	switch (ast->var)
@@ -1015,6 +1184,8 @@ static cnd_t gen_expr_cnd(const ast_t *ast, state_t *st)
 		case AST_LE	: return gen_cmp_cnd(ast, st, CND_LE);
 		case AST_GT	: return gen_cmp_cnd(ast, st, CND_GT);
 		case AST_GE	: return gen_cmp_cnd(ast, st, CND_GE);
+		case AST_LAND	: return gen_land_cnd(ast_as_bin(ast), st);
+		case AST_LOR	: return gen_lor_cnd(ast_as_bin(ast), st);
 		default		: return gen_test_cnd(ast, st);
 	}
 }

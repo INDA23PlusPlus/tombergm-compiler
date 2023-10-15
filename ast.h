@@ -17,6 +17,8 @@ typedef enum
 	AST_LE,
 	AST_GT,
 	AST_GE,
+	AST_LAND,
+	AST_LOR,
 	AST_SUM,
 	AST_DIFF,
 	AST_PROD,

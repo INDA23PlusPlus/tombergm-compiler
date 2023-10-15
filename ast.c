@@ -17,6 +17,8 @@ static const char *op_sym(ast_var_t var)
 		case AST_LE	: return "<=";
 		case AST_GT	: return ">";
 		case AST_GE	: return ">=";
+		case AST_LAND	: return "&&";
+		case AST_LOR	: return "||";
 		case AST_SUM	: return "+";
 		case AST_DIFF	: return "-";
 		case AST_PROD	: return "*";
@@ -71,6 +73,8 @@ void ast_print(const ast_t *ast)
 		case AST_LE	:
 		case AST_GT	:
 		case AST_GE	:
+		case AST_LAND	:
+		case AST_LOR	:
 		case AST_SUM	:
 		case AST_DIFF	:
 		case AST_PROD	:
@@ -188,6 +192,8 @@ ast_t *ast_new(ast_var_t var)
 		case AST_LE	:
 		case AST_GT	:
 		case AST_GE	:
+		case AST_LAND	:
+		case AST_LOR	:
 		case AST_SUM	:
 		case AST_DIFF	:
 		case AST_PROD	:

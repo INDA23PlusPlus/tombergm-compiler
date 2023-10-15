@@ -53,6 +53,8 @@ static inline int op_left(const tok_t *tok)
 		tok->var == TOK_LTEQ	||
 		tok->var == TOK_GT	||
 		tok->var == TOK_GTEQ	||
+		tok->var == TOK_2AMP	||
+		tok->var == TOK_2PIPE	||
 		tok->var == TOK_PLUS	||
 		tok->var == TOK_MINUS	||
 		tok->var == TOK_ASTER	||
@@ -72,18 +74,20 @@ static inline int op_prec(const tok_t *tok)
 	{
 		default		: return -1;
 		case TOK_EQ	: return 0;
+		case TOK_2PIPE	: return 1;
+		case TOK_2AMP	: return 2;
 		case TOK_2EQ	:
-		case TOK_EXEQ	: return 1;
+		case TOK_EXEQ	: return 3;
 		case TOK_LT	:
 		case TOK_LTEQ	:
 		case TOK_GT	:
-		case TOK_GTEQ	: return 2;
+		case TOK_GTEQ	: return 4;
 		case TOK_PLUS	:
-		case TOK_MINUS	: return 3;
+		case TOK_MINUS	: return 5;
 		case TOK_ASTER	:
 		case TOK_SLASH	:
-		case TOK_PRCENT	: return 4;
-		case TOK_EX	: return 5;
+		case TOK_PRCENT	: return 6;
+		case TOK_EX	: return 7;
 	}
 }
 
@@ -118,6 +122,8 @@ static inline int is_op(const tok_t *tok)
 			tok->var == TOK_LTEQ	||
 			tok->var == TOK_GT	||
 			tok->var == TOK_GTEQ	||
+			tok->var == TOK_2AMP	||
+			tok->var == TOK_2PIPE	||
 			tok->var == TOK_PLUS	||
 			tok->var == TOK_MINUS	||
 			tok->var == TOK_ASTER	||
@@ -223,6 +229,8 @@ static inline ast_var_t tok_to_bin(tok_var_t var)
 		case TOK_LTEQ	: return AST_LE;
 		case TOK_GT	: return AST_GT;
 		case TOK_GTEQ	: return AST_GE;
+		case TOK_2AMP	: return AST_LAND;
+		case TOK_2PIPE	: return AST_LOR;
 		case TOK_PLUS	: return AST_SUM;
 		case TOK_MINUS	: return AST_DIFF;
 		case TOK_ASTER	: return AST_PROD;
@@ -305,6 +313,8 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 		case TOK_LTEQ	:
 		case TOK_GT	:
 		case TOK_GTEQ	:
+		case TOK_2AMP	:
+		case TOK_2PIPE	:
 		case TOK_PLUS	:
 		case TOK_MINUS	:
 		case TOK_ASTER	:

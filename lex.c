@@ -52,6 +52,26 @@ static tok_t *lex_sym(const char **sp)
 				default		: s--;			break;
 			}
 		}					break;
+		case '&'	:
+		{
+			var = TOK_AMP;
+
+			switch (s++[0])
+			{
+				case '&'	: var = TOK_2AMP;	break;
+				default		: s--;			break;
+			}
+		}					break;
+		case '|'	:
+		{
+			var = TOK_PIPE;
+
+			switch (s++[0])
+			{
+				case '|'	: var = TOK_2PIPE;	break;
+				default		: s--;			break;
+			}
+		}					break;
 		case '<'	:
 		{
 			var = TOK_LT;
