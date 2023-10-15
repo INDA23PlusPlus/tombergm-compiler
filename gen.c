@@ -1154,7 +1154,7 @@ static cnd_t gen_lor_cnd(const ast_bin_t *ast, state_t *st)
 
 		insn("JMP\t%s", lbl_name(lbl_b));
 		labl("%s", lbl_name(lbl_a));
-		insn("XOR\t%s, %s", val_asm(&v), val_asm(&v));
+		insn("MOV\t$1, %s", val_asm(&v));
 		labl("%s", lbl_name(lbl_b));
 		insn("TEST\t%s, %s", val_asm(&v), val_asm(&v));
 
