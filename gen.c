@@ -849,6 +849,12 @@ static val_t gen_sum(const ast_bin_t *ast, state_t *st)
 {
 	val_t a = gen_expr(ast->l, st);
 	val_t b = gen_expr(ast->r, st);
+
+	if (val_is_con(&a) && val_is_con(&b))
+	{
+		return val_con(a.con.val + b.con.val);
+	}
+
 	val_t v = reg_realloc2(st, &a, &b);
 
 	insn("ADDQ\t%s, %s", val_asm(&b), val_asm(&v));
@@ -862,6 +868,12 @@ static val_t gen_diff(const ast_bin_t *ast, state_t *st)
 {
 	val_t a = gen_expr(ast->l, st);
 	val_t b = gen_expr(ast->r, st);
+
+	if (val_is_con(&a) && val_is_con(&b))
+	{
+		return val_con(a.con.val - b.con.val);
+	}
+
 	val_t v = reg_realloc(st, &a);
 
 	insn("SUBQ\t%s, %s", val_asm(&b), val_asm(&v));
@@ -876,6 +888,31 @@ static val_t gen_muldiv(const ast_bin_t *ast, state_t *st, int mul, reg_t r)
 	int rax_allocd = reg_allocd(st, REG_RAX);
 	int rdx_allocd = reg_allocd(st, REG_RDX);
 
+	val_t a = gen_expr(ast->l, st);
+	val_t b = gen_expr(ast->r, st);
+
+	if (val_is_con(&a) && val_is_con(&b))
+	{
+		if (mul)
+		{
+			if (r == REG_RAX)
+			{
+				return val_con(a.con.val * b.con.val);
+			}
+		}
+		else if (b.con.val != 0)
+		{
+			if (r == REG_RAX)
+			{
+				return val_con(a.con.val / b.con.val);
+			}
+			else if (r == REG_RDX)
+			{
+				return val_con(a.con.val % b.con.val);
+			}
+		}
+	}
+
 	if (rax_allocd)
 	{
 		insn("PUSH\t%%rax");
@@ -886,8 +923,6 @@ static val_t gen_muldiv(const ast_bin_t *ast, state_t *st, int mul, reg_t r)
 	}
 
 	val_t rax = val_reg(REG_RAX);
-	val_t a = gen_expr(ast->l, st);
-	val_t b = gen_expr(ast->r, st);
 
 	if (val_eq(&b, &rax) && !val_eq(&a, &b))
 	{
