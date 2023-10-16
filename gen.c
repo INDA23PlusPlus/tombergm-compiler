@@ -498,11 +498,11 @@ static void gen_mov(const val_t *a, const val_t *b)
 
 	if (val_eq(a, &zero) && val_is_reg(b))
 	{
-		insn("XOR\t%s, %s", val_asm(b), val_asm(b));
+		insn("XORQ\t%s, %s", val_asm(b), val_asm(b));
 	}
 	else
 	{
-		insn("MOV\t%s, %s", val_asm(a), val_asm(b));
+		insn("MOVQ\t%s, %s", val_asm(a), val_asm(b));
 	}
 }
 
@@ -641,7 +641,7 @@ static val_t gen_call(const ast_call_t *ast, state_t *st)
 		}
 	}
 
-	insn("XOR\t%%rax, %%rax");
+	insn("XORQ\t%%rax, %%rax");
 	insn("CALL\t%s", ast_as_id(ast->fn)->id);
 
 	for (reg_t i = REG_MAX - 1; i >= 0; i--)
@@ -735,7 +735,7 @@ static val_t gen_not(const ast_t *ast, state_t *st)
 	val_t v = val_reg(reg_alloc(st));
 
 	insn("SET%s\t%s", cnd_mnem[c], l);
-	insn("MOVZX\t%s, %s", l, val_asm(&v));
+	insn("MOVZXQ\t%s, %s", l, val_asm(&v));
 
 	if (reg_allocd(st, r.reg.reg))
 	{
@@ -763,7 +763,7 @@ static val_t gen_cmp(const ast_t *ast, state_t *st, cnd_t c)
 	val_t v = val_reg(reg_alloc(st));
 
 	insn("SET%s\t%s", cnd_mnem[c], l);
-	insn("MOVZX\t%s, %s", l, val_asm(&v));
+	insn("MOVZXQ\t%s, %s", l, val_asm(&v));
 
 	if (reg_allocd(st, r.reg.reg))
 	{
@@ -778,7 +778,7 @@ static val_t gen_land(const ast_bin_t *ast, state_t *st)
 	val_t v = val_reg(reg_alloc(st));
 	int lbl = lbl_alloc(st);
 
-	insn("XOR\t%s, %s", val_asm(&v), val_asm(&v));
+	insn("XORQ\t%s, %s", val_asm(&v), val_asm(&v));
 
 	cnd_t a = gen_expr_cnd(ast->l, st);
 	insn("J%s\t%s", cnd_mnem[cnd_neg(a)], lbl_name(lbl));
@@ -796,7 +796,7 @@ static val_t gen_land(const ast_bin_t *ast, state_t *st)
 		}
 
 		insn("SET%s\t%s", cnd_mnem[b], l);
-		insn("MOVZX\t%s, %s", l, val_asm(&v));
+		insn("MOVZXQ\t%s, %s", l, val_asm(&v));
 
 		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
 		{
@@ -814,7 +814,7 @@ static val_t gen_lor(const ast_bin_t *ast, state_t *st)
 	val_t v = val_reg(reg_alloc(st));
 	int lbl = lbl_alloc(st);
 
-	insn("MOV\t$1, %s", val_asm(&v));
+	insn("MOVQ\t$1, %s", val_asm(&v));
 
 	cnd_t a = gen_expr_cnd(ast->l, st);
 	insn("J%s\t%s", cnd_mnem[a], lbl_name(lbl));
@@ -832,7 +832,7 @@ static val_t gen_lor(const ast_bin_t *ast, state_t *st)
 		}
 
 		insn("SET%s\t%s", cnd_mnem[b], l);
-		insn("MOVZX\t%s, %s", l, val_asm(&v));
+		insn("MOVZXQ\t%s, %s", l, val_asm(&v));
 
 		if (!val_eq(&r, &v) && reg_allocd(st, r.reg.reg))
 		{
@@ -851,7 +851,7 @@ static val_t gen_sum(const ast_bin_t *ast, state_t *st)
 	val_t b = gen_expr(ast->r, st);
 	val_t v = reg_realloc2(st, &a, &b);
 
-	insn("ADD\t%s, %s", val_asm(&b), val_asm(&v));
+	insn("ADDQ\t%s, %s", val_asm(&b), val_asm(&v));
 
 	val_free(st, &b);
 
@@ -864,7 +864,7 @@ static val_t gen_diff(const ast_bin_t *ast, state_t *st)
 	val_t b = gen_expr(ast->r, st);
 	val_t v = reg_realloc(st, &a);
 
-	insn("SUB\t%s, %s", val_asm(&b), val_asm(&v));
+	insn("SUBQ\t%s, %s", val_asm(&b), val_asm(&v));
 
 	val_free(st, &b);
 
@@ -928,12 +928,12 @@ static val_t gen_muldiv(const ast_bin_t *ast, state_t *st, int mul, reg_t r)
 
 	if (mul)
 	{
-		insn("IMUL\t%s", val_asm(&b));
+		insn("IMULQ\t%s", val_asm(&b));
 	}
 	else
 	{
 		insn("CQO");
-		insn("IDIV\t%s", val_asm(&b));
+		insn("IDIVQ\t%s", val_asm(&b));
 	}
 	val_free(st, &b);
 
@@ -1028,7 +1028,7 @@ static cnd_t gen_test_cnd(const ast_t *ast, state_t *st)
 		case AST_DIFF	:	break;
 		default		:
 		{
-			insn("TEST\t%s, %s", val_asm(&v), val_asm(&v));
+			insn("TESTQ\t%s, %s", val_asm(&v), val_asm(&v));
 		}			break;
 	}
 
@@ -1061,11 +1061,11 @@ static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c)
 			v = a;
 		}
 
-		insn("TEST\t%s, %s", val_asm(&v), val_asm(&v));
+		insn("TESTQ\t%s, %s", val_asm(&v), val_asm(&v));
 	}
 	else
 	{
-		insn("CMP\t%s, %s", val_asm(&b), val_asm(&a));
+		insn("CMPQ\t%s, %s", val_asm(&b), val_asm(&a));
 	}
 
 	val_free(st, &a);
@@ -1078,16 +1078,16 @@ static void set_cc(cnd_t c, state_t *st)
 {
 	val_t v = val_reg(reg_alloc(st));
 
-	insn("XOR\t%s, %s", val_asm(&v), val_asm(&v));
+	insn("XORQ\t%s, %s", val_asm(&v), val_asm(&v));
 
 	switch (c)
 	{
-		case CND_EQ	: insn("CMP\t$0, %s", val_asm(&v));	break;
-		case CND_NE	: insn("CMP\t$1, %s", val_asm(&v));	break;
-		case CND_LT	: insn("CMP\t$1, %s", val_asm(&v));	break;
-		case CND_LE	: insn("CMP\t$1, %s", val_asm(&v));	break;
-		case CND_GT	: insn("CMP\t$-1, %s", val_asm(&v));	break;
-		case CND_GE	: insn("CMP\t$-1, %s", val_asm(&v));	break;
+		case CND_EQ	: insn("CMPQ\t$0, %s", val_asm(&v));	break;
+		case CND_NE	: insn("CMPQ\t$1, %s", val_asm(&v));	break;
+		case CND_LT	: insn("CMPQ\t$1, %s", val_asm(&v));	break;
+		case CND_LE	: insn("CMPQ\t$1, %s", val_asm(&v));	break;
+		case CND_GT	: insn("CMPQ\t$-1, %s", val_asm(&v));	break;
+		case CND_GE	: insn("CMPQ\t$-1, %s", val_asm(&v));	break;
 		default		:					break;
 	}
 
@@ -1098,16 +1098,16 @@ static void clr_cc(cnd_t c, state_t *st)
 {
 	val_t v = val_reg(reg_alloc(st));
 
-	insn("XOR\t%s, %s", val_asm(&v), val_asm(&v));
+	insn("XORQ\t%s, %s", val_asm(&v), val_asm(&v));
 
 	switch (c)
 	{
-		case CND_EQ	: insn("CMP\t$1, %s", val_asm(&v));	break;
-		case CND_NE	: insn("CMP\t$0, %s", val_asm(&v));	break;
-		case CND_LT	: insn("CMP\t$-1, %s", val_asm(&v));	break;
-		case CND_LE	: insn("CMP\t$-1, %s", val_asm(&v));	break;
-		case CND_GT	: insn("CMP\t$1, %s", val_asm(&v));	break;
-		case CND_GE	: insn("CMP\t$1, %s", val_asm(&v));	break;
+		case CND_EQ	: insn("CMPQ\t$1, %s", val_asm(&v));	break;
+		case CND_NE	: insn("CMPQ\t$0, %s", val_asm(&v));	break;
+		case CND_LT	: insn("CMPQ\t$-1, %s", val_asm(&v));	break;
+		case CND_LE	: insn("CMPQ\t$-1, %s", val_asm(&v));	break;
+		case CND_GT	: insn("CMPQ\t$1, %s", val_asm(&v));	break;
+		case CND_GE	: insn("CMPQ\t$1, %s", val_asm(&v));	break;
 		default		:					break;
 	}
 
@@ -1385,8 +1385,8 @@ void gen(const ast_t *ast)
 	endl();
 	insn(".type\tprint, @function");
 	labl("print");
-	insn("MOV\t%%rdi, %%rsi");
-	insn("LEA\t.LC0(%%rip), %%rdi");
+	insn("MOVQ\t%%rdi, %%rsi");
+	insn("LEAQ\t.LC0(%%rip), %%rdi");
 	insn("JMP\tprintf");
 	insn(".size\tprint, . - print");
 
