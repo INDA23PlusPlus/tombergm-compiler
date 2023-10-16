@@ -19,11 +19,10 @@ fn prime(n)
 fn main()
 {
 	let n = 3;
-	let max = 100000;
 
 	print(2);
 
-	while (n < max)
+	while (n < 100000)
 	{
 		if (prime(n))
 		{
