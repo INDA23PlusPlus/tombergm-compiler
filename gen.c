@@ -579,11 +579,36 @@ static val_t gen_id(const ast_id_t *ast, state_t *st)
 	return v;
 }
 
+static val_t gen_sqrt(const ast_call_t *ast, state_t *st)
+{
+	if (ast->narg != 1)
+	{
+		abort();
+	}
+
+	ast_t *arg = ast->arg;
+	val_t a = gen_expr(arg, st);
+	val_t v = val_reg(reg_alloc(st));
+
+	insn("CVTSI2SD\t%s, %%xmm0", val_asm(&a));
+	insn("SQRTSD\t%%xmm0, %%xmm0");
+	insn("CVTTSD2SI\t%%xmm0, %s", val_asm(&v));
+
+	val_free(st, &a);
+
+	return v;
+}
+
 static val_t gen_call(const ast_call_t *ast, state_t *st)
 {
 	if (ast->fn->var != AST_ID)
 	{
 		abort();
+	}
+
+	if (strcmp(ast_as_id(ast->fn)->id, "sqrt") == 0)
+	{
+		return gen_sqrt(ast, st);
 	}
 
 	for (reg_t i = 0; i < REG_MAX; i++)

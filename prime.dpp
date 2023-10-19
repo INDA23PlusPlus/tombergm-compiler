@@ -1,9 +1,9 @@
 fn prime(n)
 {
 	let m = 3;
-	let k = n / 2;
+	let k = sqrt(n);
 
-	while (m < k)
+	while (m <= k)
 	{
 		if (n % m == 0)
 		{
