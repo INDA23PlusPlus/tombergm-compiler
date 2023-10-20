@@ -1,7 +1,9 @@
 #include <stddef.h>
 #include <string.h>
+#include "err.h"
 #include "misc.h"
 #include "tok.h"
+#include "where.h"
 
 static inline int is_alpha(char c)
 {
@@ -209,8 +211,10 @@ static tok_t *lex_id(const char **sp)
 	return &tok_new_id(ss, sl)->tok;
 }
 
-tok_t *lex(const char *s)
+tok_t *lex(const char *src, const char *file, err_t **err_list)
 {
+	const char *s = src;
+
 	tok_t *(*lex_fns[])(const char **sp) =
 	{
 		lex_sym,
@@ -221,6 +225,10 @@ tok_t *lex(const char *s)
 
 	tok_t *tok_list = NULL;
 	tok_t **tok_head = &tok_list;
+
+	where_t where_tmpl = nowhere();
+	where_tmpl.file = file;
+	where_tmpl.src = src;
 
 	for (;;)
 	{
@@ -250,6 +258,9 @@ tok_t *lex(const char *s)
 			continue;
 		}
 
+		where_t where = where_tmpl;
+		where.beg = s - src;
+
 		tok_t *tok = NULL;
 
 		for (int i = 0; i < ARRAY_SIZE(lex_fns); i++)
@@ -264,11 +275,43 @@ tok_t *lex(const char *s)
 
 		if (tok == NULL)
 		{
+			if (s[0] != '\0')
+			{
+				where.end = s + 1 - src;
+				err_set_m
+				(
+					err_list,
+					where,
+					oth,
+					"unexpected character"
+				);
+
+				goto err;
+			}
+
 			break;
 		}
+
+		where.end = s - src;
+		tok->where = where;
+
+		tok_push_back(&tok_head, tok);
+	}
+
+	{
+		tok_t *tok = tok_new(TOK_END);
+
+		tok->where = where_tmpl;
+		tok->where.beg = s - src;
+		tok->where.end = s - src;
 
 		tok_push_back(&tok_head, tok);
 	}
 
 	return tok_list;
+
+err:
+	tok_del_list(tok_list);
+
+	return NULL;
 }

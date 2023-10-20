@@ -5,8 +5,18 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ast.h"
+#include "err.h"
 #include "misc.h"
 #include "xmalloc.h"
+
+#define fatal(where, var, ...) \
+({ \
+	where_t __fatal_where = (where); \
+	__typeof__(err_ ## var(__fatal_where, __VA_ARGS__)) \
+	__fatal_err = err_ ## var(__fatal_where, __VA_ARGS__); \
+	err_print(&__fatal_err.err); \
+	exit(EXIT_FAILURE); \
+})
 
 typedef enum
 {
@@ -394,6 +404,11 @@ static reg_t reg_alloc(state_t *st)
 		}
 	}
 
+	{
+		fprintf(stderr, "register allocation failed, aborting\n");
+		exit(EXIT_FAILURE);
+	}
+
 	return REG_INV;
 }
 
@@ -569,6 +584,11 @@ static val_t gen_id(const ast_id_t *ast, state_t *st)
 {
 	def_t *def = def_lookup(st, ast->id);
 
+	if (def == NULL)
+	{
+		fatal(ast->ast.where, oth, "use of undeclared identifier");
+	}
+
 	val_t v = def->val;
 
 	if (val_is_reg(&v))
@@ -583,7 +603,7 @@ static val_t gen_sqrt(const ast_call_t *ast, state_t *st)
 {
 	if (ast->narg != 1)
 	{
-		abort();
+		fatal(ast->ast.where, oth, "sqrt takes exactly one argument");
 	}
 
 	ast_t *arg = ast->arg;
@@ -603,7 +623,7 @@ static val_t gen_call(const ast_call_t *ast, state_t *st)
 {
 	if (ast->fn->var != AST_ID)
 	{
-		abort();
+		fatal(ast->fn->where, oth, "expression is not callable");
 	}
 
 	if (strcmp(ast_as_id(ast->fn)->id, "sqrt") == 0)

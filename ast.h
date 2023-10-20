@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "where.h"
 
 typedef enum
 {
@@ -37,6 +38,7 @@ typedef struct ast ast_t;
 struct ast
 {
 	ast_var_t	var;
+	where_t		where;
 	ast_t *		next;
 };
 

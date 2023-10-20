@@ -50,6 +50,7 @@ void tok_print(const tok_t *tok)
 		case TOK_WHILE	: fprintf(stderr, "while");	break;
 		case TOK_RET	: fprintf(stderr, "return");	break;
 		case TOK_FN	: fprintf(stderr, "fn");	break;
+		case TOK_END	:				break;
 	}
 }
 
@@ -68,6 +69,7 @@ tok_t *tok_new(tok_var_t var)
 	tok_t *tok = xmalloc(size);
 
 	tok->var = var;
+	tok->where = nowhere();
 	tok->next = NULL;
 
 	return tok;
@@ -124,13 +126,34 @@ tok_t *tok_dup(const tok_t *tok)
 		return NULL;
 	}
 
+	tok_t *tok_d;
+
 	switch (tok->var)
 	{
-		case TOK_INT	: return &tok_dup_int(tok_as_int(tok))->tok;
-		case TOK_ID	: return &tok_dup_id(tok_as_id(tok))->tok;
-		case TOK_CALL	: return &tok_dup_call(tok_as_call(tok))->tok;
-		default		: return tok_new(tok->var);
+		case TOK_INT	:
+		{
+			tok_d = &tok_dup_int(tok_as_int(tok))->tok;
+		}	break;
+		case TOK_ID	:
+		{
+			tok_d = &tok_dup_id(tok_as_id(tok))->tok;
+		}	break;
+		case TOK_CALL	:
+		{
+			tok_d = &tok_dup_call(tok_as_call(tok))->tok;
+		}	break;
+		default		:
+		{
+			tok_d = tok_new(tok->var);
+		}	break;
 	}
+
+	if (tok_d != NULL)
+	{
+		tok_d->where = tok->where;
+	}
+
+	return tok_d;
 }
 
 void tok_dstr_id(tok_id_t *tok)

@@ -1,17 +1,28 @@
 #include <stddef.h>
 #include "ast.h"
+#include "err.h"
 #include "misc.h"
 #include "tok.h"
+#include "where.h"
+#include "xmalloc.h"
+
+#define par_str_op	"operator"
+#define par_str_expr	"expression"
+#define par_str_stmt	"statement"
+#define par_str_block	"block"
+#define par_str_fn	"function definition"
 
 #define expect(tok_var) \
 ({ \
 	__typeof__(tok) __expect_tok = tok; \
 	if (tok != NULL && tok->var == TOK_ ## tok_var) \
 	{ \
+		where_join(&where, &tok->where); \
 		tok = tok->next; \
 	} \
 	else \
 	{ \
+		err_set_m(err_list, tok->where, exp_tok, TOK_ ## tok_var); \
 		goto err; \
 	} \
 	__expect_tok; \
@@ -22,6 +33,7 @@
 	__typeof__(tok) __expect_maybe_tok; \
 	if (tok != NULL && tok->var == TOK_ ## tok_var) \
 	{ \
+		where_join(&where, &tok->where); \
 		__expect_maybe_tok = tok; \
 		tok = tok->next; \
 	} \
@@ -34,15 +46,21 @@
 
 #define try_parse(what) \
 ({ \
-	ast_t *__try_parse_ast = parse_ ## what(&tok); \
-	if (__try_parse_ast == NULL) \
+	ast_t *__try_parse_ast = parse_ ## what(&tok, err_list); \
+	if (__try_parse_ast != NULL) \
 	{ \
+		where_join(&where, &__try_parse_ast->where); \
+	} \
+	else \
+	{ \
+		err_rstor_to(err_list, err_st, &tok->where); \
+		err_set_m(err_list, tok->where, exp_some, par_str_ ## what); \
 		goto err; \
 	} \
 	__try_parse_ast; \
 })
 
-static ast_t *parse_stmt(const tok_t **tokp);
+static ast_t *parse_stmt(const tok_t **tokp, err_t **err_list);
 
 static inline int op_left(const tok_t *tok)
 {
@@ -240,7 +258,7 @@ static inline ast_var_t tok_to_bin(tok_var_t var)
 	}
 }
 
-static ast_t *parse_expr_pn(tok_t **tokp)
+static ast_t *parse_expr_pn(tok_t **tokp, err_t **err_list)
 {
 	tok_t *tok = tok_pop(tokp);
 
@@ -253,11 +271,19 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 	{
 		case TOK_INT	:
 		{
-			return &ast_new_const(tok_as_int(tok)->val)->ast;
+			ast_const_t *ast = ast_new_const(tok_as_int(tok)->val);
+
+			where_join(&ast->ast.where, &tok->where);
+
+			return &ast->ast;
 		}
 		case TOK_ID	:
 		{
-			return &ast_new_id(tok_as_id(tok)->id)->ast;
+			ast_id_t *ast = ast_new_id(tok_as_id(tok)->id);
+
+			where_join(&ast->ast.where, &tok->where);
+
+			return &ast->ast;
 		}
 		case TOK_CALL	:
 		{
@@ -265,9 +291,11 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 
 			ast_call_t *ast = ast_new_call();
 
+			where_join(&ast->ast.where, &tok->where);
+
 			while (ast->narg < tok_as_call(tok)->narg)
 			{
-				ast_t *arg = parse_expr_pn(tokp);
+				ast_t *arg = parse_expr_pn(tokp, err_list);
 
 				if (arg == NULL)
 				{
@@ -276,10 +304,12 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 
 				ast_push(&ast->arg, arg);
 
+				where_join(&ast->ast.where, &arg->where);
+
 				ast->narg++;
 			}
 
-			ast->fn = parse_expr_pn(tokp);
+			ast->fn = parse_expr_pn(tokp, err_list);
 
 			if (ast->narg != narg || ast->fn == NULL)
 			{
@@ -288,6 +318,8 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 				return NULL;
 			}
 
+			where_join(&ast->ast.where, &ast->fn->where);
+
 			return &ast->ast;
 		}
 		case TOK_EX	:
@@ -295,7 +327,9 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 			ast_var_t var = tok_to_un(tok->var);
 			ast_un_t *ast = ast_as_un(ast_new(var));
 
-			ast->expr = parse_expr_pn(tokp);
+			where_join(&ast->ast.where, &tok->where);
+
+			ast->expr = parse_expr_pn(tokp, err_list);
 
 			if (ast->expr == NULL)
 			{
@@ -303,6 +337,8 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 
 				return NULL;
 			}
+
+			where_join(&ast->ast.where, &ast->expr->where);
 
 			return &ast->ast;
 		}
@@ -324,8 +360,10 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 			ast_var_t var = tok_to_bin(tok->var);
 			ast_bin_t *ast = ast_as_bin(ast_new(var));
 
-			ast->r = parse_expr_pn(tokp);
-			ast->l = parse_expr_pn(tokp);
+			where_join(&ast->ast.where, &tok->where);
+
+			ast->r = parse_expr_pn(tokp, err_list);
+			ast->l = parse_expr_pn(tokp, err_list);
 
 			if (ast->l == NULL || ast->r == NULL)
 			{
@@ -334,14 +372,19 @@ static ast_t *parse_expr_pn(tok_t **tokp)
 				return NULL;
 			}
 
+			where_join(&ast->ast.where, &ast->l->where);
+			where_join(&ast->ast.where, &ast->r->where);
+
 			return &ast->ast;
 		}
 		default		: return NULL;
 	}
 }
 
-static ast_t *parse_expr(const tok_t **tokp)
+static ast_t *parse_expr(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	const tok_t *pre = NULL;
 	ast_t *ast = NULL;
@@ -382,7 +425,9 @@ static ast_t *parse_expr(const tok_t **tokp)
 
 			if (pre != NULL && !is_op(pre) && !is_lparen(pre))
 			{
-				tok_push(&fnstk, &tok_new_call(0)->tok);
+				tok_call_t *tok_call = tok_new_call(0);
+				where_join(&tok_call->tok.where, &tok->where);
+				tok_push(&fnstk, &tok_call->tok);
 			}
 			else
 			{
@@ -403,12 +448,21 @@ static ast_t *parse_expr(const tok_t **tokp)
 					tok_as_call(fnstk)->narg++;
 				}
 
+				where_join(&fnstk->where, &tok->where);
 				tok_push(&outpt, tok_pop(&fnstk));
 			}
 			else
 			{
 				if (is_lparen(pre))
 				{
+					err_set_m
+					(
+						err_list,
+						tok->where,
+						exp_some,
+						par_str_expr
+					);
+
 					goto exit;
 				}
 
@@ -420,6 +474,8 @@ static ast_t *parse_expr(const tok_t **tokp)
 			break;
 		}
 
+		where_join(&where, &tok->where);
+
 		pre = tok;
 		tok = tok->next;
 	}
@@ -428,6 +484,14 @@ static ast_t *parse_expr(const tok_t **tokp)
 	{
 		if (is_lparen(opstk))
 		{
+			err_set_m
+			(
+				err_list,
+				opstk->where,
+				oth,
+				"mismatched parenthesis"
+			);
+
 			goto exit;
 		}
 
@@ -437,10 +501,12 @@ static ast_t *parse_expr(const tok_t **tokp)
 	{
 		tok_t *outpt_p = outpt;
 
-		ast = parse_expr_pn(&outpt_p);
+		ast = parse_expr_pn(&outpt_p, err_list);
 
 		if (outpt_p != NULL)
 		{
+			err_set_m(err_list, ast->where, exp_some, par_str_op);
+
 			ast = ast_del(ast);
 
 			goto exit;
@@ -448,6 +514,12 @@ static ast_t *parse_expr(const tok_t **tokp)
 	}
 
 	*tokp = tok;
+	if (ast != NULL)
+	{
+		ast->where = where;
+		err_rstor(err_list, err_st);
+	}
+
 exit:
 	tok_del_list(opstk);
 	tok_del_list(outpt);
@@ -456,8 +528,10 @@ exit:
 	return ast;
 }
 
-static ast_t *parse_fullexpr(const tok_t **tokp)
+static ast_t *parse_fullexpr(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_t *ast = NULL;
 
@@ -465,6 +539,8 @@ static ast_t *parse_fullexpr(const tok_t **tokp)
 	expect(SEMICO);
 
 	*tokp = tok;
+	ast->where = where;
+	err_rstor(err_list, err_st);
 
 	return ast;
 
@@ -474,8 +550,10 @@ err:
 	return NULL;
 }
 
-static ast_t *parse_block(const tok_t **tokp)
+static ast_t *parse_block(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_block_t *ast = NULL;
 
@@ -487,19 +565,17 @@ static ast_t *parse_block(const tok_t **tokp)
 
 	for (;;)
 	{
-		ast_t *stmt = parse_stmt(&tok);
-
-		if (stmt == NULL)
+		if (expect_maybe(RBRACE) != NULL)
 		{
 			break;
 		}
 
-		ast_push_back(&stmt_head, stmt);
+		ast_push_back(&stmt_head, try_parse(stmt));
 	}
 
-	expect(RBRACE);
-
 	*tokp = tok;
+	ast->ast.where = where;
+	err_rstor(err_list, err_st);
 
 	return &ast->ast;
 
@@ -509,8 +585,10 @@ err:
 	return NULL;
 }
 
-static ast_t *parse_let(const tok_t **tokp)
+static ast_t *parse_let(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_let_t *ast = NULL;
 
@@ -528,6 +606,8 @@ static ast_t *parse_let(const tok_t **tokp)
 	expect(SEMICO);
 
 	*tokp = tok;
+	ast->ast.where = where;
+	err_rstor(err_list, err_st);
 
 	return &ast->ast;
 
@@ -537,8 +617,10 @@ err:
 	return NULL;
 }
 
-static ast_t *parse_if(const tok_t **tokp)
+static ast_t *parse_if(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_if_t *ast = NULL;
 
@@ -557,6 +639,8 @@ static ast_t *parse_if(const tok_t **tokp)
 	}
 
 	*tokp = tok;
+	ast->ast.where = where;
+	err_rstor(err_list, err_st);
 
 	return &ast->ast;
 
@@ -569,8 +653,10 @@ err:
 	return NULL;
 }
 
-static ast_t *parse_while(const tok_t **tokp)
+static ast_t *parse_while(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_while_t *ast = NULL;
 
@@ -584,6 +670,8 @@ static ast_t *parse_while(const tok_t **tokp)
 	ast->stmt = try_parse(stmt);
 
 	*tokp = tok;
+	ast->ast.where = where;
+	err_rstor(err_list, err_st);
 
 	return &ast->ast;
 
@@ -593,8 +681,10 @@ err:
 	return NULL;
 }
 
-static ast_t *parse_ret(const tok_t **tokp)
+static ast_t *parse_ret(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_ret_t *ast = NULL;
 
@@ -602,11 +692,16 @@ static ast_t *parse_ret(const tok_t **tokp)
 
 	ast = ast_new_ret();
 
-	ast->expr = parse_expr(&tok);
+	if (expect_maybe(SEMICO) == NULL)
+	{
+		ast->expr = try_parse(expr);
 
-	expect(SEMICO);
+		expect(SEMICO);
+	}
 
 	*tokp = tok;
+	ast->ast.where = where;
+	err_rstor(err_list, err_st);
 
 	return &ast->ast;
 
@@ -616,12 +711,13 @@ err:
 	return NULL;
 }
 
-static ast_t *parse_stmt(const tok_t **tokp)
+static ast_t *parse_stmt(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
 	const tok_t *tok = *tokp;
 	ast_t *ast;
 
-	ast_t *(*parse_fns[])(const tok_t **tokp) =
+	ast_t *(*parse_fns[])(const tok_t **tokp, err_t **err_list) =
 	{
 		parse_block,
 		parse_fullexpr,
@@ -633,11 +729,12 @@ static ast_t *parse_stmt(const tok_t **tokp)
 
 	for (int i = 0; i < ARRAY_SIZE(parse_fns); i++)
 	{
-		ast = parse_fns[i](&tok);
+		ast = parse_fns[i](&tok, err_list);
 
 		if (ast != NULL)
 		{
 			*tokp = tok;
+			err_rstor(err_list, err_st);
 
 			return ast;
 		}
@@ -646,8 +743,10 @@ static ast_t *parse_stmt(const tok_t **tokp)
 	return NULL;
 }
 
-static ast_t *parse_arglist(const tok_t **tokp)
+static ast_t *parse_arglist(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_t *arg_list = NULL;
 	ast_t **arg_head = &arg_list;
@@ -668,6 +767,7 @@ static ast_t *parse_arglist(const tok_t **tokp)
 	expect(RPAREN);
 
 	*tokp = tok;
+	err_rstor(err_list, err_st);
 
 	return arg_list;
 
@@ -677,8 +777,10 @@ err:
 	return NULL;
 }
 
-static ast_t *parse_fn(const tok_t **tokp)
+static ast_t *parse_fn(const tok_t **tokp, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_fn_t *ast = NULL;
 
@@ -688,7 +790,7 @@ static ast_t *parse_fn(const tok_t **tokp)
 
 	ast->id = &ast_new_id(tok_as_id(expect(ID))->id)->ast;
 
-	ast->arg = parse_arglist(&tok);
+	ast->arg = parse_arglist(&tok, err_list);
 	if (ast->arg == NULL)
 	{
 		expect(LPAREN);
@@ -706,6 +808,8 @@ static ast_t *parse_fn(const tok_t **tokp)
 	}
 
 	*tokp = tok;
+	ast->ast.where = where;
+	err_rstor(err_list, err_st);
 
 	return &ast->ast;
 
@@ -715,22 +819,34 @@ err:
 	return NULL;
 }
 
-ast_t *parse(const tok_t *tok)
+ast_t *parse(const tok_t *tok, err_t **err_list)
 {
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
 	ast_t *ast_list = NULL;
 	ast_t **ast_head = &ast_list;
 
 	for (;;)
 	{
-		ast_t *ast = parse_fn(&tok);
-
-		if (ast == NULL)
+		if (expect_maybe(END) != NULL)
 		{
 			break;
 		}
 
-		ast_push_back(&ast_head, ast);
+		ast_push_back(&ast_head, try_parse(fn));
 	}
 
+	if (tok != NULL)
+	{
+		expect(END);
+	}
+
+	err_rstor(err_list, err_st);
+
 	return ast_list;
+
+err:
+	ast_del_list(ast_list);
+
+	return NULL;
 }

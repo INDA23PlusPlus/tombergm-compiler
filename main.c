@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "err.h"
 #include "gen.h"
 #include "lex.h"
 #include "parse.h"
@@ -114,6 +115,7 @@ int main(int argc, char *argv[])
 
 	if (ifname == NULL || strcmp(ifname, "-") == 0)
 	{
+		ifname = "stdin";
 		input = read_stdin();
 	}
 	else
@@ -126,16 +128,22 @@ int main(int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	if (ofname != NULL && strcmp(ofname, "-") != 0)
+	tok_t *tok_list;
+
 	{
-		if (freopen(ofname, "w", stdout) == NULL)
-		{
-			return EXIT_FAILURE;
-		}
+		err_t *err_list = NULL;
+		err_t *err_st = err_save(&err_list);
+
+		tok_list = lex(input, ifname, &err_list);
+
+		err_print(err_list);
+		err_rstor(&err_list, err_st);
 	}
 
-	tok_t *tok_list = lex(input);
-	ast_t *ast_list = parse(tok_list);
+	if (tok_list == NULL)
+	{
+		return EXIT_FAILURE;
+	}
 
 	if (verbose)
 	{
@@ -153,7 +161,27 @@ int main(int argc, char *argv[])
 			tok = tok->next;
 		}
 		fprintf(stderr, "\n");
+	}
 
+	ast_t *ast_list;
+
+	{
+		err_t *err_list = NULL;
+		err_t *err_st = err_save(&err_list);
+
+		ast_list = parse(tok_list, &err_list);
+
+		err_print(err_list);
+		err_rstor(&err_list, err_st);
+	}
+
+	if (ast_list == NULL)
+	{
+		return EXIT_FAILURE;
+	}
+
+	if (verbose)
+	{
 		fprintf(stderr, "parse: ");
 		ast_t *ast = ast_list;
 		while (ast != NULL)
@@ -168,6 +196,14 @@ int main(int argc, char *argv[])
 			ast = ast->next;
 		}
 		fprintf(stderr, "\n");
+	}
+
+	if (ofname != NULL && strcmp(ofname, "-") != 0)
+	{
+		if (freopen(ofname, "w", stdout) == NULL)
+		{
+			return EXIT_FAILURE;
+		}
 	}
 
 	gen(ast_list);

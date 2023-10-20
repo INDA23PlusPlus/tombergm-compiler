@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include "where.h"
 
 typedef enum
 {
@@ -38,6 +39,7 @@ typedef enum
 	TOK_WHILE,
 	TOK_RET,
 	TOK_FN,
+	TOK_END,
 } tok_var_t;
 
 typedef struct tok tok_t;
@@ -45,6 +47,7 @@ typedef struct tok tok_t;
 struct tok
 {
 	tok_var_t	var;
+	where_t		where;
 	tok_t *		next;
 };
 

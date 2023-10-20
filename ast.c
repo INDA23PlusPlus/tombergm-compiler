@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ast.h"
+#include "where.h"
 #include "xmalloc.h"
 
 static const char *op_sym(ast_var_t var)
@@ -211,6 +212,7 @@ ast_t *ast_new(ast_var_t var)
 	ast_t *ast = xmalloc(size);
 
 	ast->var = var;
+	ast->where = nowhere();
 	ast->next = NULL;
 
 	return ast;

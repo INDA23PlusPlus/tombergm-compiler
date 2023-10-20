@@ -13,7 +13,7 @@ $(PROGS): %: %.s
 $(PROGS:%=%.s): %.s: %.dpp compiler
 	./compiler $(DPPFLAGS) -o $@ $<
 
-compiler: ast.c gen.c lex.c main.c parse.c tok.c xmalloc.c
+compiler: ast.c err.c gen.c lex.c main.c parse.c tok.c where.c xmalloc.c
 	$(LINK.c) -o $@ $^
 
 clean:
