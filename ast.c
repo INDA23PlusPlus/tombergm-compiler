@@ -173,6 +173,9 @@ void ast_print(const ast_t *ast)
 			fprintf(stderr, ") ");
 			ast_print(ast_as_fn(ast)->body);
 		}			break;
+		case AST_END	:
+		{
+		}			break;
 	}
 }
 

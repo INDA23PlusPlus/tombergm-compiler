@@ -828,17 +828,19 @@ ast_t *parse(const tok_t *tok, err_t **err_list)
 
 	for (;;)
 	{
-		if (expect_maybe(END) != NULL)
+		const tok_t *tok_end = expect_maybe(END);
+
+		if (tok_end != NULL)
 		{
+			ast_t *ast_end = ast_new(AST_END);
+			ast_end->where = tok_end->where;
+
+			ast_push_back(&ast_head, ast_end);
+
 			break;
 		}
 
 		ast_push_back(&ast_head, try_parse(fn));
-	}
-
-	if (tok != NULL)
-	{
-		expect(END);
 	}
 
 	err_rstor(err_list, err_st);

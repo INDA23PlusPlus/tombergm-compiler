@@ -87,6 +87,10 @@ int main(int argc, char *argv[])
 		{
 			if (ofname != NULL)
 			{
+				fprintf(stderr,
+					"error: multiple output files "
+					"specified\n");
+
 				return EXIT_FAILURE;
 			}
 
@@ -94,6 +98,9 @@ int main(int argc, char *argv[])
 
 			if (i == argc)
 			{
+				fprintf(stderr,
+					"error: expected output filename\n");
+
 				return EXIT_FAILURE;
 			}
 
@@ -104,6 +111,10 @@ int main(int argc, char *argv[])
 		{
 			if (ifname != NULL)
 			{
+				fprintf(stderr,
+					"error: multiple input files "
+					"specified\n");
+
 				return EXIT_FAILURE;
 			}
 
@@ -125,6 +136,8 @@ int main(int argc, char *argv[])
 
 	if (input == NULL)
 	{
+		fprintf(stderr, "error: failed to read `%s`\n", ifname);
+
 		return EXIT_FAILURE;
 	}
 
@@ -202,11 +215,17 @@ int main(int argc, char *argv[])
 	{
 		if (freopen(ofname, "w", stdout) == NULL)
 		{
+			fprintf(stderr,
+				"error: failed to open `%s` for writing\n",
+				ofname);
+
 			return EXIT_FAILURE;
 		}
 	}
 
 	gen(ast_list);
 
+	ast_del_list(ast_list);
+	tok_del_list(tok_list);
 	xfree(input);
 }

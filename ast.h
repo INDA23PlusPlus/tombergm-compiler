@@ -31,6 +31,7 @@ typedef enum
 	AST_WHILE,
 	AST_FN,
 	AST_RET,
+	AST_END,
 } ast_var_t;
 
 typedef struct ast ast_t;
