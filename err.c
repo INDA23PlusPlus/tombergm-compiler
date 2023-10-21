@@ -90,12 +90,12 @@ void err_rstor_to(err_t **err_list, const err_t *err_st, const where_t *to)
 
 static void print_err_ctx(const where_t *where, const where_ctx_t *ctx)
 {
-	long range_l = where->end - where->beg;
+	long where_l = where->end - where->beg;
 	long line_l = ctx->line_end - ctx->line_beg;
 
 	if (where->src + where->end > ctx->line_end)
 	{
-		range_l = ctx->line_end - (where->src + where->beg);
+		where_l = ctx->line_end - (where->src + where->beg);
 	}
 
 	fprintf(stderr, "%5li | ", ctx->line + 1);
@@ -121,7 +121,7 @@ static void print_err_ctx(const where_t *where, const where_ctx_t *ctx)
 		fprintf(stderr, " ");
 	}
 
-	for (long i = 0; i < range_l; i++)
+	for (long i = 0; i < where_l; i++)
 	{
 		if (i == 0)
 		{
