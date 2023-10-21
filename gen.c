@@ -754,6 +754,11 @@ static val_t gen_set(const ast_bin_t *ast, state_t *st, val_t *d)
 	val_t a = gen_expr(ast->l, st, d);
 	val_t b = gen_expr(ast->r, st, &a);
 
+	if (val_is_con(&a))
+	{
+		fatal(ast->l->where, oth, "lvalue expected");
+	}
+
 	gen_mov(&b, &a);
 
 	if (!val_eq(&a, &b))
