@@ -7,6 +7,7 @@
 
 typedef enum
 {
+	AST_VOID,
 	AST_CONST,
 	AST_ID,
 	AST_CALL,

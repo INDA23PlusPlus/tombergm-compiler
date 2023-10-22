@@ -535,8 +535,15 @@ static ast_t *parse_fullexpr(const tok_t **tokp, err_t **err_list)
 	const tok_t *tok = *tokp;
 	ast_t *ast = NULL;
 
-	ast = try_parse(expr);
-	expect(SEMICO);
+	if (expect_maybe(SEMICO) != NULL)
+	{
+		ast = ast_new(AST_VOID);
+	}
+	else
+	{
+		ast = try_parse(expr);
+		expect(SEMICO);
+	}
 
 	*tokp = tok;
 	ast->where = where;

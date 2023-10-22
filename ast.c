@@ -33,6 +33,9 @@ void ast_print(const ast_t *ast)
 {
 	switch (ast->var)
 	{
+		case AST_VOID	:
+		{
+		}			break;
 		case AST_CONST	:
 		{
 			fprintf(stderr, "%" PRIi64, ast_as_const(ast)->val);
