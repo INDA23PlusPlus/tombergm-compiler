@@ -226,6 +226,22 @@ static cnd_t cnd_neg(cnd_t c)
 	}
 }
 
+static cnd_t cnd_rev(cnd_t c)
+{
+	switch (c)
+	{
+		case CND_EQ	: return CND_EQ;
+		case CND_NE	: return CND_NE;
+		case CND_LT	: return CND_GT;
+		case CND_LE	: return CND_GE;
+		case CND_GT	: return CND_LT;
+		case CND_GE	: return CND_LE;
+		case CND_T	: return CND_T;
+		case CND_F	: return CND_F;
+		default		: return CND_INV;
+	}
+}
+
 static int cnd_is_con(cnd_t c)
 {
 	switch (c)
@@ -1253,12 +1269,150 @@ static cnd_t gen_test_cnd(const ast_t *ast, state_t *st)
 	return c;
 }
 
+static int is_cnd_expr(const ast_t *ast)
+{
+	switch (ast->var)
+	{
+		case AST_NOT	:
+		case AST_EQ	:
+		case AST_NE	:
+		case AST_LT	:
+		case AST_LE	:
+		case AST_GT	:
+		case AST_GE	:
+		case AST_LAND	:
+		case AST_LOR	: return 1;
+		default		: return 0;
+	}
+}
+
 static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c)
 {
 	const ast_bin_t *bin = ast_as_bin(ast);
 
-	val_t a = gen_expr(bin->l, st, NULL);
-	val_t b = gen_expr(bin->r, st, NULL);
+	if (cnd_is_con(c))
+	{
+		return c;
+	}
+
+	ast_t *l = bin->l;
+	ast_t *r = bin->r;
+
+	if (!is_cnd_expr(l) && is_cnd_expr(r))
+	{
+		ast_t *t = l;
+		l = r;
+		r = t;
+		c = cnd_rev(c);
+	}
+
+	val_t a;
+	val_t b;
+
+	b = gen_expr(r, st, NULL);
+
+	if (is_cnd_expr(l) && val_is_con(&b))
+	{
+		cnd_t ac = gen_expr_cnd(l, st);
+
+		switch (c)
+		{
+			case CND_EQ	:
+			{
+				if (b.con.val == 0)
+				{
+					return cnd_neg(ac);
+				}
+				else if (b.con.val == 1)
+				{
+					return ac;
+				}
+				else
+				{
+					return CND_F;
+				}
+			}	break;
+			case CND_NE	:
+			{
+				if (b.con.val == 0)
+				{
+					return ac;
+				}
+				else if (b.con.val == 1)
+				{
+					return cnd_neg(ac);
+				}
+				else
+				{
+					return CND_T;
+				}
+			}	break;
+			case CND_LT	:
+			{
+				if (b.con.val < 1)
+				{
+					return CND_F;
+				}
+				else if (b.con.val > 1)
+				{
+					return CND_T;
+				}
+				else
+				{
+					return cnd_neg(ac);
+				}
+			}	break;
+			case CND_LE	:
+			{
+				if (b.con.val < 0)
+				{
+					return CND_F;
+				}
+				else if (b.con.val > 0)
+				{
+					return CND_T;
+				}
+				else
+				{
+					return cnd_neg(ac);
+				}
+			}	break;
+			case CND_GT	:
+			{
+				if (b.con.val > 0)
+				{
+					return CND_F;
+				}
+				else if (b.con.val < 0)
+				{
+					return CND_T;
+				}
+				else
+				{
+					return ac;
+				}
+			}	break;
+			case CND_GE	:
+			{
+				if (b.con.val > 1)
+				{
+					return CND_F;
+				}
+				else if (b.con.val < 1)
+				{
+					return CND_T;
+				}
+				else
+				{
+					return ac;
+				}
+			}	break;
+			default		:
+				break;
+		}
+	}
+
+	a = gen_expr(l, st, NULL);
 
 	if (val_is_con(&a) && val_is_con(&b))
 	{
