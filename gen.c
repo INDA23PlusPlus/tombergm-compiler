@@ -1652,11 +1652,31 @@ static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c)
 	}
 	else
 	{
+		int a_arit =
+			l->var == AST_SUM	||
+			l->var == AST_DIFF	||
+			l->var == AST_BOR	||
+			l->var == AST_BXOR	;
+		int b_arit =
+			r->var == AST_SUM	||
+			r->var == AST_DIFF	||
+			r->var == AST_BOR	||
+			r->var == AST_BXOR	;
+		int is_eqne =
+			c == CND_EQ	||
+			c == CND_NE	;
 		val_t zero = val_con(0);
-		int is_eqne = c == CND_EQ || c == CND_NE;
 		int a_zero = val_eq(&a, &zero);
 		int b_zero = val_eq(&b, &zero);
-		if (is_eqne && (a_zero || b_zero))
+
+		if (a_arit && b_zero)
+		{
+		}
+		else if (a_zero && b_arit)
+		{
+			c = cnd_rev(c);
+		}
+		else if (is_eqne && (a_zero || b_zero))
 		{
 			val_t v;
 
