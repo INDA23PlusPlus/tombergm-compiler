@@ -133,6 +133,11 @@ static void print_err_ctx(const where_t *where, const where_ctx_t *ctx)
 		}
 	}
 
+	if (where->beg == where->end && where->src[where->beg] == '\0')
+	{
+		fprintf(stderr, "^ <end of file>");
+	}
+
 	fprintf(stderr, "\n");
 }
 
