@@ -24,6 +24,8 @@ void tok_print(const tok_t *tok)
 		case TOK_EX	: fprintf(stderr, "!");		break;
 		case TOK_AMP	: fprintf(stderr, "&");		break;
 		case TOK_PIPE	: fprintf(stderr, "|");		break;
+		case TOK_CARET	: fprintf(stderr, "^");		break;
+		case TOK_TILDE	: fprintf(stderr, "~");		break;
 		case TOK_EQ	: fprintf(stderr, "=");		break;
 		case TOK_LT	: fprintf(stderr, "<");		break;
 		case TOK_GT	: fprintf(stderr, ">");		break;

@@ -779,26 +779,6 @@ static val_t gen_call(const ast_call_t *ast, state_t *st, val_t *d)
 	return v;
 }
 
-static val_t gen_set(const ast_bin_t *ast, state_t *st, val_t *d)
-{
-	val_t a = gen_expr(ast->l, st, d);
-	val_t b = gen_expr(ast->r, st, &a);
-
-	if (val_is_con(&a))
-	{
-		fatal(ast->l->where, oth, "lvalue expected");
-	}
-
-	gen_mov(&b, &a);
-
-	if (!val_eq(&a, &b))
-	{
-		val_free(st, &b);
-	}
-
-	return a;
-}
-
 static void pick_lreg(const state_t *st, val_t *r, const char **l, val_t *d)
 {
 	struct
@@ -832,7 +812,7 @@ static void pick_lreg(const state_t *st, val_t *r, const char **l, val_t *d)
 
 static cnd_t gen_expr_cnd(const ast_t *ast, state_t *st);
 
-static val_t gen_not(const ast_t *ast, state_t *st, val_t *d)
+static val_t gen_lnot(const ast_t *ast, state_t *st, val_t *d)
 {
 	cnd_t c = cnd_neg(gen_expr_cnd(ast, st));
 	val_t v = reg_realloc(st, d, d);
@@ -866,6 +846,47 @@ static val_t gen_not(const ast_t *ast, state_t *st, val_t *d)
 	}
 
 	return v;
+}
+
+static val_t gen_bnot(const ast_un_t *ast, state_t *st, val_t *d)
+{
+	val_t a = gen_expr(ast->expr, st, d);
+
+	if (val_is_con(&a))
+	{
+		return val_con(~a.con.val);
+	}
+
+	val_t v = reg_realloc(st, &a, d);
+
+	insn("NOTQ\t%s", val_asm(&v));
+
+	if (!val_eq(&a, &v))
+	{
+		val_free(st, &a);
+	}
+
+	return v;
+}
+
+static val_t gen_set(const ast_bin_t *ast, state_t *st, val_t *d)
+{
+	val_t a = gen_expr(ast->l, st, d);
+	val_t b = gen_expr(ast->r, st, &a);
+
+	if (val_is_con(&a))
+	{
+		fatal(ast->l->where, oth, "lvalue expected");
+	}
+
+	gen_mov(&b, &a);
+
+	if (!val_eq(&a, &b))
+	{
+		val_free(st, &b);
+	}
+
+	return a;
 }
 
 static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c);
@@ -1041,7 +1062,10 @@ static val_t gen_sum(const ast_bin_t *ast, state_t *st, val_t *d)
 
 	insn("ADDQ\t%s, %s", val_asm(&b), val_asm(&v));
 
-	val_free(st, &b);
+	if (!val_eq(&b, &v))
+	{
+		val_free(st, &b);
+	}
 
 	return v;
 }
@@ -1060,7 +1084,10 @@ static val_t gen_diff(const ast_bin_t *ast, state_t *st, val_t *d)
 
 	insn("SUBQ\t%s, %s", val_asm(&b), val_asm(&v));
 
-	val_free(st, &b);
+	if (!val_eq(&b, &v))
+	{
+		val_free(st, &b);
+	}
 
 	return v;
 }
@@ -1193,11 +1220,110 @@ static val_t gen_rem(const ast_bin_t *ast, state_t *st, val_t *d)
 	return gen_muldiv(ast, st, d, 0, REG_RDX);
 }
 
+static val_t gen_band(const ast_bin_t *ast, state_t *st, val_t *d)
+{
+	val_t a;
+	val_t b;
+
+	a = gen_expr(ast->l, st, d);
+	if (!val_eq(&a, d))
+	{
+		b = gen_expr(ast->r, st, d);
+	}
+	else
+	{
+		b = gen_expr(ast->r, st, NULL);
+	}
+
+	if (val_is_con(&a) && val_is_con(&b))
+	{
+		return val_con(a.con.val & b.con.val);
+	}
+
+	val_t v = reg_realloc2(st, &a, &b, d);
+
+	insn("ANDQ\t%s, %s", val_asm(&b), val_asm(&v));
+
+	if (!val_eq(&b, &v))
+	{
+		val_free(st, &b);
+	}
+
+	return v;
+}
+
+static val_t gen_bor(const ast_bin_t *ast, state_t *st, val_t *d)
+{
+	val_t a;
+	val_t b;
+
+	a = gen_expr(ast->l, st, d);
+	if (!val_eq(&a, d))
+	{
+		b = gen_expr(ast->r, st, d);
+	}
+	else
+	{
+		b = gen_expr(ast->r, st, NULL);
+	}
+
+	if (val_is_con(&a) && val_is_con(&b))
+	{
+		return val_con(a.con.val | b.con.val);
+	}
+
+	val_t v = reg_realloc2(st, &a, &b, d);
+
+	insn("ORQ\t%s, %s", val_asm(&b), val_asm(&v));
+
+	if (!val_eq(&b, &v))
+	{
+		val_free(st, &b);
+	}
+
+	return v;
+}
+
+static val_t gen_bxor(const ast_bin_t *ast, state_t *st, val_t *d)
+{
+	val_t a;
+	val_t b;
+
+	a = gen_expr(ast->l, st, d);
+	if (!val_eq(&a, d))
+	{
+		b = gen_expr(ast->r, st, d);
+	}
+	else
+	{
+		b = gen_expr(ast->r, st, NULL);
+	}
+
+	if (val_is_con(&a) && val_is_con(&b))
+	{
+		return val_con(a.con.val ^ b.con.val);
+	}
+
+	val_t v = reg_realloc2(st, &a, &b, d);
+
+	insn("XORQ\t%s, %s", val_asm(&b), val_asm(&v));
+
+	if (!val_eq(&b, &v))
+	{
+		val_free(st, &b);
+	}
+
+	return v;
+}
+
 static val_t gen_expr(const ast_t *ast, state_t *st, val_t *d)
 {
 	switch (ast->var)
 	{
-		case AST_NOT	:
+		case AST_CONST	: return gen_const(ast_as_const(ast), st, d);
+		case AST_ID	: return gen_id(ast_as_id(ast), st, d);
+		case AST_CALL	: return gen_call(ast_as_call(ast), st, d);
+		case AST_LNOT	:
 		{
 			ast_t *expr = ast_as_un(ast)->expr;
 
@@ -1209,12 +1335,10 @@ static val_t gen_expr(const ast_t *ast, state_t *st, val_t *d)
 			}
 			else
 			{
-				return gen_not(expr, st, d);
+				return gen_lnot(expr, st, d);
 			}
 		}
-		case AST_CONST	: return gen_const(ast_as_const(ast), st, d);
-		case AST_ID	: return gen_id(ast_as_id(ast), st, d);
-		case AST_CALL	: return gen_call(ast_as_call(ast), st, d);
+		case AST_BNOT	: return gen_bnot(ast_as_un(ast), st, d);
 		case AST_SET	: return gen_set(ast_as_bin(ast), st, d);
 		case AST_EQ	:
 		case AST_NE	:
@@ -1229,12 +1353,48 @@ static val_t gen_expr(const ast_t *ast, state_t *st, val_t *d)
 		case AST_PROD	: return gen_prod(ast_as_bin(ast), st, d);
 		case AST_QUOT	: return gen_quot(ast_as_bin(ast), st, d);
 		case AST_REM	: return gen_rem(ast_as_bin(ast), st, d);
+		case AST_BAND	: return gen_band(ast_as_bin(ast), st, d);
+		case AST_BOR	: return gen_bor(ast_as_bin(ast), st, d);
+		case AST_BXOR	: return gen_bxor(ast_as_bin(ast), st, d);
 		default		: return val_void();
 	}
 }
 
 static cnd_t gen_test_cnd(const ast_t *ast, state_t *st)
 {
+	if (ast->var == AST_BAND)
+	{
+		const ast_bin_t *bin = ast_as_bin(ast);
+
+		val_t a = gen_expr(bin->l, st, NULL);
+		val_t b = gen_expr(bin->r, st, NULL);
+
+		if (val_is_con(&a) && val_is_con(&b))
+		{
+			if ((a.con.val & b.con.val) != 0)
+			{
+				return CND_T;
+			}
+			else
+			{
+				return CND_F;
+			}
+		}
+		else if (val_is_con(&a))
+		{
+			val_t t = a;
+			a = b;
+			b = t;
+		}
+
+		insn("TESTQ\t%s, %s", val_asm(&b), val_asm(&a));
+
+		val_free(st, &a);
+		val_free(st, &b);
+
+		return CND_NE;
+	}
+
 	cnd_t c;
 	val_t v = gen_expr(ast, st, NULL);
 
@@ -1254,7 +1414,9 @@ static cnd_t gen_test_cnd(const ast_t *ast, state_t *st)
 		switch (ast->var)
 		{
 			case AST_SUM	:
-			case AST_DIFF	:	break;
+			case AST_DIFF	:
+			case AST_BOR	:
+			case AST_BXOR	:	break;
 			default		:
 			{
 				insn("TESTQ\t%s, %s", val_asm(&v), val_asm(&v));
@@ -1273,7 +1435,7 @@ static int is_cnd_expr(const ast_t *ast)
 {
 	switch (ast->var)
 	{
-		case AST_NOT	:
+		case AST_LNOT	:
 		case AST_EQ	:
 		case AST_NE	:
 		case AST_LT	:
@@ -1511,6 +1673,14 @@ static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c)
 		}
 		else
 		{
+			if (val_is_con(&a))
+			{
+				val_t t = a;
+				a = b;
+				b = t;
+				c = cnd_rev(c);
+			}
+
 			insn("CMPQ\t%s, %s", val_asm(&b), val_asm(&a));
 		}
 	}
@@ -1649,7 +1819,7 @@ static cnd_t gen_expr_cnd(const ast_t *ast, state_t *st)
 {
 	switch (ast->var)
 	{
-		case AST_NOT	:
+		case AST_LNOT	:
 		{
 			ast_t *expr = ast_as_un(ast)->expr;
 

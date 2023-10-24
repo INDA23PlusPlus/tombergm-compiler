@@ -14,6 +14,8 @@ typedef enum
 	TOK_EQ,
 	TOK_AMP,
 	TOK_PIPE,
+	TOK_CARET,
+	TOK_TILDE,
 	TOK_LT,
 	TOK_GT,
 	TOK_LTEQ,

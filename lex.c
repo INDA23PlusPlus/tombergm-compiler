@@ -74,6 +74,8 @@ static tok_t *lex_sym(const char **sp)
 				default		: s--;			break;
 			}
 		}					break;
+		case '^'	: var = TOK_CARET;	break;
+		case '~'	: var = TOK_TILDE;	break;
 		case '<'	:
 		{
 			var = TOK_LT;

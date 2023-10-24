@@ -11,7 +11,8 @@ typedef enum
 	AST_CONST,
 	AST_ID,
 	AST_CALL,
-	AST_NOT,
+	AST_LNOT,
+	AST_BNOT,
 	AST_SET,
 	AST_EQ,
 	AST_NE,
@@ -26,6 +27,9 @@ typedef enum
 	AST_PROD,
 	AST_QUOT,
 	AST_REM,
+	AST_BAND,
+	AST_BOR,
+	AST_BXOR,
 	AST_BLOCK,
 	AST_LET,
 	AST_IF,
@@ -190,6 +194,8 @@ ast_ret_t *	ast_new_ret(void);
 ast_fn_t *	ast_new_fn(void);
 void		ast_dstr_id(ast_id_t *ast);
 void		ast_dstr_call(ast_call_t *ast);
+void		ast_dstr_un(ast_un_t *ast);
+void		ast_dstr_bin(ast_bin_t *ast);
 void		ast_dstr_block(ast_block_t *ast);
 void		ast_dstr_let(ast_let_t *ast);
 void		ast_dstr_if(ast_if_t *ast);

@@ -78,6 +78,9 @@ static inline int op_left(const tok_t *tok)
 		tok->var == TOK_ASTER	||
 		tok->var == TOK_SLASH	||
 		tok->var == TOK_PRCENT	||
+		tok->var == TOK_AMP	||
+		tok->var == TOK_PIPE	||
+		tok->var == TOK_CARET	||
 		tok->var == TOK_COMMA	;
 }
 
@@ -94,18 +97,22 @@ static inline int op_prec(const tok_t *tok)
 		case TOK_EQ	: return 0;
 		case TOK_2PIPE	: return 1;
 		case TOK_2AMP	: return 2;
+		case TOK_PIPE	: return 3;
+		case TOK_CARET	: return 4;
+		case TOK_AMP	: return 5;
 		case TOK_2EQ	:
-		case TOK_EXEQ	: return 3;
+		case TOK_EXEQ	: return 6;
 		case TOK_LT	:
 		case TOK_LTEQ	:
 		case TOK_GT	:
-		case TOK_GTEQ	: return 4;
+		case TOK_GTEQ	: return 7;
 		case TOK_PLUS	:
-		case TOK_MINUS	: return 5;
+		case TOK_MINUS	: return 8;
 		case TOK_ASTER	:
 		case TOK_SLASH	:
-		case TOK_PRCENT	: return 6;
-		case TOK_EX	: return 7;
+		case TOK_PRCENT	: return 9;
+		case TOK_EX	:
+		case TOK_TILDE	: return 10;
 	}
 }
 
@@ -133,6 +140,7 @@ static inline int is_op(const tok_t *tok)
 		tok != NULL			&&
 		(
 			tok->var == TOK_EX	||
+			tok->var == TOK_TILDE	||
 			tok->var == TOK_EQ	||
 			tok->var == TOK_2EQ	||
 			tok->var == TOK_EXEQ	||
@@ -147,6 +155,9 @@ static inline int is_op(const tok_t *tok)
 			tok->var == TOK_ASTER	||
 			tok->var == TOK_SLASH	||
 			tok->var == TOK_PRCENT	||
+			tok->var == TOK_AMP	||
+			tok->var == TOK_PIPE	||
+			tok->var == TOK_CARET	||
 			tok->var == TOK_COMMA
 		);
 }
@@ -231,7 +242,8 @@ static inline ast_var_t tok_to_un(tok_var_t var)
 {
 	switch (var)
 	{
-		case TOK_EX	: return AST_NOT;
+		case TOK_EX	: return AST_LNOT;
+		case TOK_TILDE	: return AST_BNOT;
 		default		: return 0;
 	}
 }
@@ -254,6 +266,9 @@ static inline ast_var_t tok_to_bin(tok_var_t var)
 		case TOK_ASTER	: return AST_PROD;
 		case TOK_SLASH	: return AST_QUOT;
 		case TOK_PRCENT	: return AST_REM;
+		case TOK_AMP	: return AST_BAND;
+		case TOK_PIPE	: return AST_BOR;
+		case TOK_CARET	: return AST_BXOR;
 		default		: return 0;
 	}
 }
@@ -323,6 +338,7 @@ static ast_t *parse_expr_pn(tok_t **tokp, err_t **err_list)
 			return &ast->ast;
 		}
 		case TOK_EX	:
+		case TOK_TILDE	:
 		{
 			ast_var_t var = tok_to_un(tok->var);
 			ast_un_t *ast = ast_as_un(ast_new(var));
@@ -356,6 +372,9 @@ static ast_t *parse_expr_pn(tok_t **tokp, err_t **err_list)
 		case TOK_ASTER	:
 		case TOK_SLASH	:
 		case TOK_PRCENT	:
+		case TOK_AMP	:
+		case TOK_PIPE	:
+		case TOK_CARET	:
 		{
 			ast_var_t var = tok_to_bin(tok->var);
 			ast_bin_t *ast = ast_as_bin(ast_new(var));
