@@ -2089,12 +2089,19 @@ void gen(const ast_t *ast)
 
 	while (ast != NULL)
 	{
-		endl();
-
 		switch (ast->var)
 		{
-			case AST_FN	: gen_fn(ast_as_fn(ast), &st);	break;
-			default		:				break;
+			case AST_FN	:
+			{
+				endl();
+				gen_fn(ast_as_fn(ast), &st);
+			}	break;
+			case AST_END	:
+				break;
+			default		:
+			{
+				abort();
+			}	break;
 		}
 
 		ast = ast->next;
