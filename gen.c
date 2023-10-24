@@ -419,12 +419,14 @@ static def_t *def_lookup(const state_t *st, const char *id)
 
 static const char *reg_name(reg_t r)
 {
-	if (r < 0 || r >= REG_MAX)
+	if (r >= 0 && r < REG_MAX)
+	{
+		return reg_names[r];
+	}
+	else
 	{
 		abort();
 	}
-
-	return reg_names[r];
 }
 
 static reg_t reg_alloc(state_t *st)
