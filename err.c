@@ -170,8 +170,42 @@ static void print_exp_opt(const err_exp_t *err)
 	}
 }
 
-static void print_exp_list(const err_t *err)
+static int exp_is_dup(const err_t *err_list, const err_t *exp)
 {
+	const err_t *err = err_list;
+
+	while (err != exp)
+	{
+		if (err->var == ERR_EXP)
+		{
+			const err_exp_t *a = err_as_exp(err);
+			const err_exp_t *b = err_as_exp(exp);
+
+			if (a->what != NULL && b->what != NULL)
+			{
+				if (strcmp(a->what, b->what) == 0)
+				{
+					return 1;
+				}
+			}
+			else if (a->what == NULL && b->what == NULL)
+			{
+				if (a->tok_var == b->tok_var)
+				{
+					return 1;
+				}
+			}
+		}
+
+		err = err->next;
+	}
+
+	return 0;
+}
+
+static void print_exp_list(const err_t *err_list)
+{
+	const err_t *err = err_list;
 	where_t where = err->where;
 	where_ctx_t ctx;
 
@@ -189,7 +223,7 @@ static void print_exp_list(const err_t *err)
 			break;
 		}
 
-		if (err->var == ERR_EXP)
+		if (err->var == ERR_EXP && !exp_is_dup(err_list, err))
 		{
 			if (opt != NULL)
 			{
