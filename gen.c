@@ -2084,7 +2084,7 @@ static void gen_lib(void)
 	insn("SYSCALL");
 	insn(".size\t_start, . - _start");
 	endl();
-	insn(".globl print");
+	insn(".globl\tprint");
 	insn(".type\tprint, @function");
 	labl("print");
 	insn("MOV\t%%rdi, %%rax");
@@ -2107,8 +2107,8 @@ static void gen_lib(void)
 	insn("ADD\t$'0', %%rdx");
 	insn("DEC\t%%rsi");
 	insn("MOVB\t%%dl, (%%rsi)");
-	insn("CMP\t$0, %%rax");
-	insn("JNE\t.div");
+	insn("TEST\t%%rax, %%rax");
+	insn("JNZ\t.div");
 	endl();
 	insn("TEST\t%%rdi, %%rdi");
 	insn("JZ\t.pos2");
