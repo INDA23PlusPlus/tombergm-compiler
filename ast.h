@@ -183,7 +183,7 @@ static inline ast_t *ast_pop(ast_t **astp)
 
 void		ast_print(const ast_t *ast);
 ast_t *		ast_new(ast_var_t var);
-ast_const_t *	ast_new_const(int val);
+ast_const_t *	ast_new_const(int64_t val);
 ast_id_t *	ast_new_id(const char *id);
 ast_call_t *	ast_new_call(void);
 ast_block_t *	ast_new_block(void);

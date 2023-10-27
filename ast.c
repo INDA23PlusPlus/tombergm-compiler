@@ -236,7 +236,7 @@ ast_t *ast_new(ast_var_t var)
 	return ast;
 }
 
-ast_const_t *ast_new_const(int val)
+ast_const_t *ast_new_const(int64_t val)
 {
 	ast_const_t *ast = ast_as_const(ast_new(AST_CONST));
 

@@ -2112,7 +2112,7 @@ static void gen_lib(void)
 	endl();
 	insn("TEST\t%%rdi, %%rdi");
 	insn("JZ\t.pos2");
-	insn("DEC\t%%rdi");
+	insn("DEC\t%%rsi");
 	insn("MOVB\t$'-', (%%rsi)");
 	labl(".pos2");
 	endl();

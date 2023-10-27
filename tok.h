@@ -122,7 +122,7 @@ static inline tok_t *tok_pop(tok_t **tokp)
 
 void		tok_print(const tok_t *tok);
 tok_t *		tok_new(tok_var_t var);
-tok_int_t *	tok_new_int(int val);
+tok_int_t *	tok_new_int(int64_t val);
 tok_id_t *	tok_new_id(const char *s, int l);
 tok_call_t *	tok_new_call(int narg);
 tok_int_t *	tok_dup_int(const tok_int_t *tok);

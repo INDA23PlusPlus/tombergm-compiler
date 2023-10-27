@@ -1,5 +1,6 @@
 #include <inttypes.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include "tok.h"
@@ -77,7 +78,7 @@ tok_t *tok_new(tok_var_t var)
 	return tok;
 }
 
-tok_int_t *tok_new_int(int val)
+tok_int_t *tok_new_int(int64_t val)
 {
 	tok_int_t *tok = tok_as_int(tok_new(TOK_INT));
 
