@@ -1,4 +1,5 @@
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 void *xmalloc(size_t size)
@@ -7,6 +8,8 @@ void *xmalloc(size_t size)
 
 	if (ptr == NULL)
 	{
+		fprintf(stderr, "error: out of memory, aborting\n");
+
 		abort();
 	}
 
@@ -19,6 +22,8 @@ void *xrealloc(void *ptr, size_t size)
 
 	if (size != 0 && ptr == NULL)
 	{
+		fprintf(stderr, "error: out of memory, aborting\n");
+
 		abort();
 	}
 
