@@ -2070,21 +2070,65 @@ static val_t gen_fn(const ast_fn_t *ast, state_t *st)
 	return val_void();
 }
 
-void gen(const ast_t *ast)
+static void gen_lib(void)
 {
-	insn(".section\t.rodata");
-	endl();
-	labl(".LC0");
-	insn(".string\t\"%%lli\\n\"");
-	endl();
 	insn(".text");
 	endl();
+	insn(".globl\t_start");
+	insn(".type\t_start, @function");
+	labl("_start");
+	insn("XOR\t%%rax, %%rax");
+	insn("CALL\tmain");
+	insn("MOV\t%%rax, %%rdi");
+	insn("MOV\t$60, %%rax");
+	insn("SYSCALL");
+	insn(".size\t_start, . - _start");
+	endl();
+	insn(".globl print");
 	insn(".type\tprint, @function");
 	labl("print");
-	insn("MOVQ\t%%rdi, %%rsi");
-	insn("LEAQ\t.LC0(%%rip), %%rdi");
-	insn("JMP\tprintf");
+	insn("MOV\t%%rdi, %%rax");
+	insn("XOR\t%%rdi, %%rdi");
+	insn("TEST\t%%rax, %%rax");
+	insn("JGE\t.pos1");
+	insn("MOV\t$1, %%rdi");
+	insn("NEG\t%%rax");
+	labl(".pos1");
+	endl();
+	insn("MOV\t%%rsp, %%rsi");
+	insn("MOV\t$10, %%rbx");
+	endl();
+	insn("DEC\t%%rsi");
+	insn("MOVB\t$'\\n', (%%rsi)");
+	endl();
+	labl(".div");
+	insn("XOR\t%%rdx, %%rdx");
+	insn("DIV\t%%rbx");
+	insn("ADD\t$'0', %%rdx");
+	insn("DEC\t%%rsi");
+	insn("MOVB\t%%dl, (%%rsi)");
+	insn("CMP\t$0, %%rax");
+	insn("JNE\t.div");
+	endl();
+	insn("TEST\t%%rdi, %%rdi");
+	insn("JZ\t.pos2");
+	insn("DEC\t%%rdi");
+	insn("MOVB\t$'-', (%%rsi)");
+	labl(".pos2");
+	endl();
+	insn("XOR\t%%rdi, %%rdi");
+	insn("MOV\t%%rsp, %%rdx");
+	insn("SUB\t%%rsi, %%rdx");
+	insn("MOV\t$1, %%rax");
+	insn("SYSCALL");
+	endl();
+	insn("RET");
 	insn(".size\tprint, . - print");
+}
+
+void gen(const ast_t *ast)
+{
+	gen_lib();
 
 	state_t st;
 	state_init(&st, NULL);

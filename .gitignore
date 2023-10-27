@@ -1,7 +1,10 @@
 /ack
+/ack.o
 /ack.s
 /fib
+/fib.o
 /fib.s
 /prime
+/prime.o
 /prime.s
 /dppc
