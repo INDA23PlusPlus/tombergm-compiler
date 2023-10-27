@@ -664,15 +664,18 @@ static val_t gen_sqrt(const ast_call_t *ast, state_t *st, val_t *d)
 		fatal(ast->ast.where, oth, "sqrt takes exactly one argument");
 	}
 
-	ast_t *arg = ast->arg;
-	val_t a = gen_expr(arg, st, NULL);
+	{
+		val_t a = gen_expr(ast->arg, st, NULL);
+
+		insn("CVTSI2SD\t%s, %%xmm0", val_asm(&a));
+
+		val_free(st, &a);
+	}
+
 	val_t v = reg_realloc(st, d, d);
 
-	insn("CVTSI2SD\t%s, %%xmm0", val_asm(&a));
 	insn("SQRTSD\t%%xmm0, %%xmm0");
 	insn("CVTTSD2SI\t%%xmm0, %s", val_asm(&v));
-
-	val_free(st, &a);
 
 	return v;
 }
