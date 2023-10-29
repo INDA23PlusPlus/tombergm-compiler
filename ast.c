@@ -161,6 +161,14 @@ void ast_print(const ast_t *ast)
 			fprintf(stderr, ") ");
 			ast_print(ast_as_while(ast)->stmt);
 		}			break;
+		case AST_CONT	:
+		{
+			fprintf(stderr, "continue");
+		}			break;
+		case AST_BREAK	:
+		{
+			fprintf(stderr, "break");
+		}			break;
 		case AST_RET	:
 		{
 			fprintf(stderr, "return");

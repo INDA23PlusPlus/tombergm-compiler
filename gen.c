@@ -293,10 +293,19 @@ struct state
 	def_t *		defs;
 	int		regs[REG_MAX];
 	int		lbl;
+	int		cont_lbl;
+	int		break_lbl;
 };
+
+static int check_lvl = 0;
 
 static int labl(const char *fmt, ...)
 {
+	if (check_lvl != 0)
+	{
+		return 0;
+	}
+
 	int ret = 0;
 	va_list arg;
 
@@ -311,6 +320,11 @@ static int labl(const char *fmt, ...)
 
 static int insn(const char *fmt, ...)
 {
+	if (check_lvl != 0)
+	{
+		return 0;
+	}
+
 	int ret = 0;
 	va_list arg;
 
@@ -327,6 +341,11 @@ static int insn(const char *fmt, ...)
 
 static int endl(void)
 {
+	if (check_lvl != 0)
+	{
+		return 0;
+	}
+
 	return printf("\n");
 }
 
@@ -363,6 +382,9 @@ static void state_init(state_t *st, state_t *next)
 
 		st->lbl = 0;
 	}
+
+	st->cont_lbl = -1;
+	st->break_lbl = -1;
 }
 
 static void state_pop(state_t *st)
@@ -414,6 +436,42 @@ static def_t *def_lookup(const state_t *st, const char *id)
 	else
 	{
 		return NULL;
+	}
+}
+
+static int get_cont_lbl(const ast_t *ast, const state_t *st)
+{
+	if (st->cont_lbl != -1)
+	{
+		return st->cont_lbl;
+	}
+	else if (st->next != NULL)
+	{
+		return get_cont_lbl(ast, st->next);
+	}
+	else
+	{
+		fatal(ast->where, oth, "continue outside of loop");
+
+		return -1;
+	}
+}
+
+static int get_break_lbl(const ast_t *ast, const state_t *st)
+{
+	if (st->break_lbl != -1)
+	{
+		return st->break_lbl;
+	}
+	else if (st->next != NULL)
+	{
+		return get_break_lbl(ast, st->next);
+	}
+	else
+	{
+		fatal(ast->where, oth, "break outside of loop");
+
+		return -1;
 	}
 }
 
@@ -633,6 +691,34 @@ static int lbl_alloc(state_t *st)
 static val_t gen_stmt(const ast_t *ast, state_t *st);
 static val_t gen_expr(const ast_t *ast, state_t *st, val_t *d);
 
+static void check_stmt(const ast_t *ast, state_t *st)
+{
+	if (ast != NULL)
+	{
+		state_t c_st = *st;
+
+		check_lvl++;
+		gen_stmt(ast, st);
+		check_lvl--;
+
+		*st = c_st;
+	}
+}
+
+static void check_expr(const ast_t *ast, state_t *st)
+{
+	if (ast != NULL)
+	{
+		state_t c_st = *st;
+
+		check_lvl++;
+		gen_expr(ast, st, NULL);
+		check_lvl--;
+
+		*st = c_st;
+	}
+}
+
 static val_t gen_const(const ast_const_t *ast, state_t *st, val_t *d)
 {
 	return val_con(ast->val);
@@ -674,7 +760,7 @@ static val_t gen_sqrt(const ast_call_t *ast, state_t *st, val_t *d)
 
 	val_t v = reg_realloc(st, d, d);
 
-	insn("SQRTSD\t%%xmm0, %%xmm0");
+	insn("SQRTSD\t\t%%xmm0, %%xmm0");
 	insn("CVTTSD2SI\t%%xmm0, %s", val_asm(&v));
 
 	return v;
@@ -973,6 +1059,8 @@ static val_t gen_land(const ast_bin_t *ast, state_t *st, val_t *d)
 	}
 	else if (a == CND_F)
 	{
+		check_expr(ast->r, st);
+
 		return v;
 	}
 	else
@@ -1025,6 +1113,8 @@ static val_t gen_lor(const ast_bin_t *ast, state_t *st, val_t *d)
 
 	if (a == CND_T)
 	{
+		check_expr(ast->r, st);
+
 		return v;
 	}
 	else if (a == CND_F)
@@ -1377,7 +1467,7 @@ static val_t gen_shl(const ast_bin_t *ast, state_t *st, val_t *d)
 
 		if (reg_allocd(st, REG_RCX))
 		{
-			insn("PUSH\t%%rcx");
+			insn("POP\t%%rcx");
 		}
 	}
 
@@ -1416,7 +1506,7 @@ static val_t gen_shr(const ast_bin_t *ast, state_t *st, val_t *d)
 
 		if (reg_allocd(st, REG_RCX))
 		{
-			insn("PUSH\t%%rcx");
+			insn("POP\t%%rcx");
 		}
 	}
 
@@ -1567,6 +1657,9 @@ static cnd_t gen_cmp_cnd(const ast_t *ast, state_t *st, cnd_t c)
 
 	if (cnd_is_con(c))
 	{
+		check_expr(bin->l, st);
+		check_expr(bin->r, st);
+
 		return c;
 	}
 
@@ -1875,6 +1968,8 @@ static cnd_t gen_land_cnd(const ast_bin_t *ast, state_t *st)
 	}
 	else if (a == CND_F)
 	{
+		check_expr(ast->r, st);
+
 		return a;
 	}
 	else
@@ -1914,6 +2009,8 @@ static cnd_t gen_lor_cnd(const ast_bin_t *ast, state_t *st)
 
 	if (a == CND_T)
 	{
+		check_expr(ast->r, st);
+
 		return a;
 	}
 	else if (a == CND_F)
@@ -2017,56 +2114,174 @@ static val_t gen_let(const ast_let_t *ast, state_t *st)
 	return v;
 }
 
+static int is_effective(const ast_t *ast)
+{
+	if (ast == NULL)
+	{
+		return 0;
+	}
+
+	switch (ast->var)
+	{
+		case AST_BLOCK	:
+		{
+			const ast_t *stmt = ast_as_block(ast)->stmt;
+
+			while (stmt != NULL)
+			{
+				if (is_effective(stmt))
+				{
+					return 1;
+				}
+
+				stmt = stmt->next;
+			}
+
+			return 0;
+		}
+		case AST_VOID	: return 0;
+		default		: return 1;
+	}
+}
+
+static int is_jmp(const ast_t *ast)
+{
+	if (ast == NULL)
+	{
+		return 0;
+	}
+
+	switch (ast->var)
+	{
+		case AST_BLOCK	: return is_jmp(ast_as_block(ast)->stmt);
+		case AST_CONT	:
+		case AST_BREAK	: return 1;
+		default		: return 0;
+	}
+}
+
+static int get_jmp_lbl(const ast_t *ast, const state_t *st)
+{
+	if (ast == NULL)
+	{
+		return -1;
+	}
+
+	switch (ast->var)
+	{
+		case AST_BLOCK	:
+		{
+			return get_jmp_lbl(ast_as_block(ast)->stmt, st);
+		}
+		case AST_CONT	: return get_cont_lbl(ast, st);
+		case AST_BREAK	: return get_break_lbl(ast, st);
+		default		: return -1;
+	}
+}
+
 static val_t gen_if(const ast_if_t *ast, state_t *st)
 {
-	int lbl_a = lbl_alloc(st);
-	int lbl_b = -1;
+	int else_lbl = lbl_alloc(st);
+	int tail_lbl = -1;
 
-	if (ast->f_stmt != NULL)
+	if (is_effective(ast->f_stmt))
 	{
-		lbl_b = lbl_alloc(st);
+		tail_lbl = lbl_alloc(st);
 	}
 
 	cnd_t c = gen_expr_cnd(ast->expr, st);
 
 	if (c == CND_T)
 	{
-		val_t v = gen_stmt(ast->t_stmt, st);
-		val_free(st, &v);
+		{
+			val_t v = gen_stmt(ast->t_stmt, st);
+			val_free(st, &v);
+		}
+
+		check_stmt(ast->f_stmt, st);
 
 		return val_void();
 	}
 	else if (c == CND_F)
 	{
-		if (ast->f_stmt != NULL)
+		check_stmt(ast->t_stmt, st);
+
+		if (is_effective(ast->f_stmt))
 		{
 			val_t v = gen_stmt(ast->f_stmt, st);
 			val_free(st, &v);
+		}
+		else
+		{
+			check_stmt(ast->f_stmt, st);
 		}
 
 		return val_void();
 	}
 
-	insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(lbl_a));
-
+	if (is_jmp(ast->t_stmt))
 	{
-		val_t v = gen_stmt(ast->t_stmt, st);
-		val_free(st, &v);
+		check_stmt(ast->t_stmt, st);
+
+		int jmp_lbl = get_jmp_lbl(ast->t_stmt, st);
+
+		insn("J%s\t%s", cnd_mnem[c], lbl_name(jmp_lbl));
+	}
+	else if (is_effective(ast->t_stmt))
+	{
+		insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(else_lbl));
+
+		{
+			val_t v = gen_stmt(ast->t_stmt, st);
+			val_free(st, &v);
+		}
+
+		if (is_effective(ast->f_stmt))
+		{
+			insn("JMP\t%s", lbl_name(tail_lbl));
+		}
+
+		labl("%s", lbl_name(else_lbl));
+	}
+	else
+	{
+		check_stmt(ast->t_stmt, st);
+
+		if (is_jmp(ast->f_stmt))
+		{
+		}
+		else if (is_effective(ast->f_stmt))
+		{
+			insn("J%s\t%s", cnd_mnem[c], lbl_name(tail_lbl));
+		}
 	}
 
-	if (ast->f_stmt != NULL)
+	if (!is_jmp(ast->t_stmt) && is_jmp(ast->f_stmt))
 	{
-		insn("JMP\t%s", lbl_name(lbl_b));
-	}
+		check_stmt(ast->f_stmt, st);
 
-	labl("%s", lbl_name(lbl_a));
-	if (ast->f_stmt != NULL)
+		int jmp_lbl = get_jmp_lbl(ast->f_stmt, st);
+
+		if (jmp_lbl != tail_lbl)
+		{
+			insn("J%s\t%s", cnd_mnem[cnd_neg(c)],
+				lbl_name(jmp_lbl));
+		}
+
+		labl("%s", lbl_name(tail_lbl));
+	}
+	else if (is_effective(ast->f_stmt))
 	{
 		{
 			val_t v = gen_stmt(ast->f_stmt, st);
 			val_free(st, &v);
 		}
-		labl("%s", lbl_name(lbl_b));
+
+		labl("%s", lbl_name(tail_lbl));
+	}
+	else
+	{
+		check_stmt(ast->f_stmt, st);
 	}
 
 	return val_void();
@@ -2074,37 +2289,90 @@ static val_t gen_if(const ast_if_t *ast, state_t *st)
 
 static val_t gen_while(const ast_while_t *ast, state_t *st)
 {
-	int lbl_a = lbl_alloc(st);
-	int lbl_b = lbl_alloc(st);
+	int cont_lbl = lbl_alloc(st);
+	int break_lbl = lbl_alloc(st);
 
-	labl("%s", lbl_name(lbl_a));
+	labl("%s", lbl_name(cont_lbl));
 
 	cnd_t c = gen_expr_cnd(ast->expr, st);
 
+	state_t l_st;
+	state_init(&l_st, st);
+
+	l_st.cont_lbl = cont_lbl;
+	l_st.break_lbl = break_lbl;
+
 	if (c == CND_T)
 	{
-		val_t v = gen_stmt(ast->stmt, st);
-		val_free(st, &v);
+		{
+			val_t v = gen_stmt(ast->stmt, &l_st);
+			val_free(&l_st, &v);
+		}
 
-		insn("JMP\t%s", lbl_name(lbl_a));
+		insn("JMP\t%s", lbl_name(cont_lbl));
 
-		return val_void();
+		labl("%s", lbl_name(break_lbl));
 	}
 	else if (c == CND_F)
 	{
-		return val_void();
+		check_stmt(ast->stmt, &l_st);
 	}
-
-	insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(lbl_b));
-
+	else if (is_jmp(ast->stmt))
 	{
-		val_t v = gen_stmt(ast->stmt, st);
-		val_free(st, &v);
+		check_stmt(ast->stmt, &l_st);
+
+		int jmp_lbl = get_jmp_lbl(ast->stmt, &l_st);
+
+		if (jmp_lbl != break_lbl)
+		{
+			insn("J%s\t%s", cnd_mnem[c], lbl_name(jmp_lbl));
+		}
+
+		labl("%s", lbl_name(break_lbl));
+	}
+	else if (is_effective(ast->stmt))
+	{
+		insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(break_lbl));
+
+		{
+			val_t v = gen_stmt(ast->stmt, &l_st);
+			val_free(&l_st, &v);
+		}
+
+		insn("JMP\t%s", lbl_name(cont_lbl));
+
+		labl("%s", lbl_name(break_lbl));
+	}
+	else
+	{
+		check_stmt(ast->stmt, &l_st);
+
+		insn("J%s\t%s", cnd_mnem[cnd_neg(c)], lbl_name(break_lbl));
+
+		{
+			int jmp_lbl = lbl_alloc(&l_st);
+			labl("%s", lbl_name(jmp_lbl));
+			insn("JMP\t%s", lbl_name(jmp_lbl));
+		}
+
+		labl("%s", lbl_name(break_lbl));
 	}
 
-	insn("JMP\t%s", lbl_name(lbl_a));
+	state_pop(&l_st);
 
-	labl("%s", lbl_name(lbl_b));
+	return val_void();
+}
+
+static val_t gen_cont(const ast_t *ast, state_t *st)
+{
+	insn("JMP\t%s", lbl_name(get_cont_lbl(ast, st)));
+
+	return val_void();
+}
+
+static val_t gen_break(const ast_t *ast, state_t *st)
+{
+	insn("JMP\t%s", lbl_name(get_break_lbl(ast, st)));
 
 	return val_void();
 }
@@ -2137,6 +2405,8 @@ static val_t gen_stmt(const ast_t *ast, state_t *st)
 		case AST_LET	: return gen_let(ast_as_let(ast), st);
 		case AST_IF	: return gen_if(ast_as_if(ast), st);
 		case AST_WHILE	: return gen_while(ast_as_while(ast), st);
+		case AST_CONT	: return gen_cont(ast, st);
+		case AST_BREAK	: return gen_break(ast, st);
 		case AST_RET	: return gen_ret(ast_as_ret(ast), st);
 		default		: return gen_expr(ast, st, NULL);
 	}

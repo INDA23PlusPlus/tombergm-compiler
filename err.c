@@ -98,20 +98,28 @@ static void print_err_ctx(const where_t *where, const where_ctx_t *ctx)
 		where_l = ctx->line_end - (where->src + where->beg);
 	}
 
+	int col = 0;
 	fprintf(stderr, "%5li | ", ctx->line + 1);
 	for (int i = 0; i < line_l; i++)
 	{
-		if (ctx->line_beg[i] == '\t')
+		char c = ctx->line_beg[i];
+		int n;
+
+		if (c == '\t')
 		{
-			int n = 8 - i % 8;
-			for (int j = 0; j < n; j++)
-			{
-				fprintf(stderr, " ");
-			}
+			c = ' ';
+			n = 8 - col % 8;
 		}
 		else
 		{
-			fprintf(stderr, "%c", ctx->line_beg[i]);
+			n = 1;
+		}
+
+		for (int j = 0; j < n; j++)
+		{
+			fprintf(stderr, "%c", c);
+
+			col++;
 		}
 	}
 	fprintf(stderr, "\n      | ");

@@ -726,10 +726,7 @@ static ast_t *parse_if(const tok_t **tokp, err_t **err_list)
 	return &ast->ast;
 
 err:
-	if (ast != NULL)
-	{
-		ast_del(&ast->ast);
-	}
+	ast_del(&ast->ast);
 
 	return NULL;
 }
@@ -758,6 +755,54 @@ static ast_t *parse_while(const tok_t **tokp, err_t **err_list)
 
 err:
 	ast_del(&ast->ast);
+
+	return NULL;
+}
+
+static ast_t *parse_cont(const tok_t **tokp, err_t **err_list)
+{
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
+	const tok_t *tok = *tokp;
+	ast_t *ast = NULL;
+
+	expect(CONT);
+	expect(SEMICO);
+
+	ast = ast_new(AST_CONT);
+
+	*tokp = tok;
+	ast->where = where;
+	err_rstor(err_list, err_st);
+
+	return ast;
+
+err:
+	ast_del(ast);
+
+	return NULL;
+}
+
+static ast_t *parse_break(const tok_t **tokp, err_t **err_list)
+{
+	err_t *err_st = err_save(err_list);
+	where_t where = nowhere();
+	const tok_t *tok = *tokp;
+	ast_t *ast = NULL;
+
+	expect(BREAK);
+	expect(SEMICO);
+
+	ast = ast_new(AST_BREAK);
+
+	*tokp = tok;
+	ast->where = where;
+	err_rstor(err_list, err_st);
+
+	return ast;
+
+err:
+	ast_del(ast);
 
 	return NULL;
 }
@@ -805,6 +850,8 @@ static ast_t *parse_stmt(const tok_t **tokp, err_t **err_list)
 		parse_let,
 		parse_if,
 		parse_while,
+		parse_cont,
+		parse_break,
 		parse_ret,
 	};
 

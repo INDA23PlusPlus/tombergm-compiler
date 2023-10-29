@@ -51,6 +51,8 @@ void tok_print(const tok_t *tok)
 		case TOK_IF	: fprintf(stderr, "if");	break;
 		case TOK_ELSE	: fprintf(stderr, "else");	break;
 		case TOK_WHILE	: fprintf(stderr, "while");	break;
+		case TOK_CONT	: fprintf(stderr, "continue");	break;
+		case TOK_BREAK	: fprintf(stderr, "break");	break;
 		case TOK_RET	: fprintf(stderr, "return");	break;
 		case TOK_FN	: fprintf(stderr, "fn");	break;
 		case TOK_CALL	:

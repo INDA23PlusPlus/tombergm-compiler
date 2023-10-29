@@ -38,6 +38,8 @@ typedef enum
 	AST_LET,
 	AST_IF,
 	AST_WHILE,
+	AST_CONT,
+	AST_BREAK,
 	AST_FN,
 	AST_RET,
 	AST_END,

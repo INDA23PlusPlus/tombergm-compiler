@@ -40,6 +40,8 @@ typedef enum
 	TOK_IF,
 	TOK_ELSE,
 	TOK_WHILE,
+	TOK_CONT,
+	TOK_BREAK,
 	TOK_RET,
 	TOK_FN,
 	/* Pseudo-tokens for parsing */

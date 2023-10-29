@@ -172,6 +172,14 @@ static tok_t *lex_kw(const char **sp)
 	{
 		var = TOK_WHILE;
 	}
+	else if (sl == 8 && strncmp(s, "continue", sl) == 0)
+	{
+		var = TOK_CONT;
+	}
+	else if (sl == 5 && strncmp(s, "break", sl) == 0)
+	{
+		var = TOK_BREAK;
+	}
 	else if(sl == 6 && strncmp(s, "return", sl) == 0)
 	{
 		var = TOK_RET;
