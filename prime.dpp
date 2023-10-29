@@ -19,6 +19,7 @@ fn prime(n)
 fn main()
 {
 	let n = 3;
+	let p = 1;
 
 	print(2);
 
@@ -26,7 +27,12 @@ fn main()
 	{
 		if (prime(n))
 		{
+			putcs('p(');
+			putd(p);
+			putcs('):\t');
 			print(n);
+
+			p = p + 1;
 		}
 
 		n = n + 2;

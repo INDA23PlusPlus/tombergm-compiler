@@ -27,7 +27,7 @@ static inline int is_id(char c)
 	return is_alpha(c) || is_digit(c) || is_idsym(c);
 }
 
-static tok_t *lex_sym(const char **sp)
+static tok_t *lex_sym(const char **sp, err_t **err_list)
 {
 	const char *s = *sp;
 
@@ -117,7 +117,7 @@ static tok_t *lex_sym(const char **sp)
 	return tok_new(var);
 }
 
-static tok_t *lex_int(const char **sp)
+static tok_t *lex_int(const char **sp, err_t **err_list)
 {
 	const char *s = *sp;
 
@@ -138,7 +138,66 @@ static tok_t *lex_int(const char **sp)
 	return &tok_new_int(val)->tok;
 }
 
-static tok_t *lex_kw(const char **sp)
+static tok_t *lex_char(const char **sp, err_t **err_list)
+{
+	where_t where;
+	const char *s = *sp;
+
+	if (*s++ != '\'')
+	{
+		return NULL;
+	}
+
+	uint64_t val = 0;
+	for (;;)
+	{
+		char c = *s++;
+
+		if (c == '\'')
+		{
+			break;
+		}
+		else if (c == '\\')
+		{
+			c = *s++;
+
+			if (c == '\0')
+			{
+				goto unterm;
+			}
+
+			switch (c)
+			{
+				case '0'	: c = '\0';	break;
+				case 'a'	: c = '\n';	break;
+				case 'b'	: c = '\b';	break;
+				case 'e'	: c = '\e';	break;
+				case 'f'	: c = '\f';	break;
+				case 'n'	: c = '\n';	break;
+				case 'r'	: c = '\r';	break;
+				case 't'	: c = '\t';	break;
+			}
+		}
+		else if (c == '\0')
+		{
+			goto unterm;
+		}
+
+		val = ((val << 8) | (uint64_t) c);
+	}
+
+	*sp = s;
+
+	return &tok_new_int(val)->tok;
+
+unterm:
+	where.src = &s[-1];
+	err_set_m(err_list, where, oth, "unterminated character literal");
+
+	return NULL;
+}
+
+static tok_t *lex_kw(const char **sp, err_t **err_list)
 {
 	const char *s = *sp;
 
@@ -200,7 +259,7 @@ static tok_t *lex_kw(const char **sp)
 	return tok_new(var);
 }
 
-static tok_t *lex_id(const char **sp)
+static tok_t *lex_id(const char **sp, err_t **err_list)
 {
 	const char *s = *sp;
 
@@ -227,10 +286,11 @@ tok_t *lex(const char *src, const char *file, err_t **err_list)
 {
 	const char *s = src;
 
-	tok_t *(*lex_fns[])(const char **sp) =
+	tok_t *(*lex_fns[])(const char **sp, err_t **err_list) =
 	{
 		lex_sym,
 		lex_int,
+		lex_char,
 		lex_kw,
 		lex_id,
 	};
@@ -277,7 +337,17 @@ tok_t *lex(const char *src, const char *file, err_t **err_list)
 
 		for (int i = 0; i < ARRAY_SIZE(lex_fns); i++)
 		{
-			tok = lex_fns[i](&s);
+			tok = lex_fns[i](&s, err_list);
+
+			err_t *err = *err_list;
+
+			if (err != NULL)
+			{
+				where.end = err->where.src - src;
+				err->where = where;
+
+				goto err;
+			}
 
 			if (tok != NULL)
 			{
