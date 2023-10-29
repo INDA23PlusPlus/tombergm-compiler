@@ -81,7 +81,18 @@ static inline int op_left(const tok_t *tok)
 		tok->var == TOK_AMP	||
 		tok->var == TOK_PIPE	||
 		tok->var == TOK_CARET	||
+		tok->var == TOK_2LT	||
+		tok->var == TOK_2GT	||
 		tok->var == TOK_COMMA	;
+}
+
+static inline int op_pre(const tok_t *tok)
+{
+	return
+		tok->var == TOK_EX	||
+		tok->var == TOK_TILDE	||
+		tok->var == TOK_PLUS	||
+		tok->var == TOK_MINUS	;
 }
 
 static inline int op_prec(const tok_t *tok)
@@ -106,13 +117,17 @@ static inline int op_prec(const tok_t *tok)
 		case TOK_LTEQ	:
 		case TOK_GT	:
 		case TOK_GTEQ	: return 7;
+		case TOK_2LT	:
+		case TOK_2GT	: return 8;
 		case TOK_PLUS	:
-		case TOK_MINUS	: return 8;
+		case TOK_MINUS	: return 9;
 		case TOK_ASTER	:
 		case TOK_SLASH	:
-		case TOK_PRCENT	: return 9;
+		case TOK_PRCENT	: return 10;
 		case TOK_EX	:
-		case TOK_TILDE	: return 10;
+		case TOK_TILDE	:
+		case TOK_POS	:
+		case TOK_NEG	: return 11;
 	}
 }
 
@@ -158,16 +173,9 @@ static inline int is_op(const tok_t *tok)
 			tok->var == TOK_AMP	||
 			tok->var == TOK_PIPE	||
 			tok->var == TOK_CARET	||
+			tok->var == TOK_2LT	||
+			tok->var == TOK_2GT	||
 			tok->var == TOK_COMMA
-		);
-}
-
-static inline int is_un(const tok_t *tok)
-{
-	return
-		tok != NULL			&&
-		(
-			tok->var == TOK_EX
 		);
 }
 
@@ -190,6 +198,47 @@ static inline int is_call(const tok_t *tok)
 	return
 		tok != NULL		&&
 		tok->var == TOK_CALL	;
+}
+
+static inline int before_pre(const tok_t *tok)
+{
+	return tok == NULL || is_op(tok) || is_lparen(tok);
+}
+
+static inline int before_post(const tok_t *tok)
+{
+	return tok != NULL && !is_op(tok) && !is_lparen(tok);
+}
+
+static tok_t *tok_as_pre(const tok_t *tok)
+{
+	tok_t *tok_d;
+
+	switch (tok->var)
+	{
+		case TOK_PLUS	: tok_d = tok_new(TOK_POS);	break;
+		case TOK_MINUS	: tok_d = tok_new(TOK_NEG);	break;
+		default		: tok_d = tok_dup(tok);		break;
+	}
+
+	where_join(&tok_d->where, &tok->where);
+
+	return tok_d;
+}
+
+static tok_t *tok_as_post(const tok_t *tok)
+{
+	tok_t *tok_d;
+
+	switch (tok->var)
+	{
+		case TOK_LPAREN	: tok_d = &tok_new_call(0)->tok;	break;
+		default		: tok_d = tok_dup(tok);			break;
+	}
+
+	where_join(&tok_d->where, &tok->where);
+
+	return tok_d;
 }
 
 static int should_pop(tok_t **opstk, const tok_t *tok)
@@ -244,6 +293,8 @@ static inline ast_var_t tok_to_un(tok_var_t var)
 	{
 		case TOK_EX	: return AST_LNOT;
 		case TOK_TILDE	: return AST_BNOT;
+		case TOK_POS	: return AST_POS;
+		case TOK_NEG	: return AST_NEG;
 		default		: return 0;
 	}
 }
@@ -269,6 +320,8 @@ static inline ast_var_t tok_to_bin(tok_var_t var)
 		case TOK_AMP	: return AST_BAND;
 		case TOK_PIPE	: return AST_BOR;
 		case TOK_CARET	: return AST_BXOR;
+		case TOK_2LT	: return AST_SHL;
+		case TOK_2GT	: return AST_SHR;
 		default		: return 0;
 	}
 }
@@ -339,6 +392,8 @@ static ast_t *parse_expr_pn(tok_t **tokp, err_t **err_list)
 		}
 		case TOK_EX	:
 		case TOK_TILDE	:
+		case TOK_POS	:
+		case TOK_NEG	:
 		{
 			ast_var_t var = tok_to_un(tok->var);
 			ast_un_t *ast = ast_as_un(ast_new(var));
@@ -375,6 +430,8 @@ static ast_t *parse_expr_pn(tok_t **tokp, err_t **err_list)
 		case TOK_AMP	:
 		case TOK_PIPE	:
 		case TOK_CARET	:
+		case TOK_2LT	:
+		case TOK_2GT	:
 		{
 			ast_var_t var = tok_to_bin(tok->var);
 			ast_bin_t *ast = ast_as_bin(ast_new(var));
@@ -429,9 +486,9 @@ static ast_t *parse_expr(const tok_t **tokp, err_t **err_list)
 		}
 		else if (is_op(tok))
 		{
-			if (is_un(tok))
+			if (before_pre(pre))
 			{
-				tok_push(&opstk, tok_dup(tok));
+				tok_push(&opstk, tok_as_pre(tok));
 			}
 			else
 			{
@@ -442,11 +499,9 @@ static ast_t *parse_expr(const tok_t **tokp, err_t **err_list)
 		{
 			tok_push(&opstk, tok_dup(tok));
 
-			if (pre != NULL && !is_op(pre) && !is_lparen(pre))
+			if (before_post(pre))
 			{
-				tok_call_t *tok_call = tok_new_call(0);
-				where_join(&tok_call->tok.where, &tok->where);
-				tok_push(&fnstk, &tok_call->tok);
+				tok_push(&fnstk, tok_as_post(tok));
 			}
 			else
 			{

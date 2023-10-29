@@ -874,6 +874,32 @@ static val_t gen_bnot(const ast_un_t *ast, state_t *st, val_t *d)
 	return v;
 }
 
+static val_t gen_pos(const ast_un_t *ast, state_t *st, val_t *d)
+{
+	return gen_expr(ast->expr, st, d);
+}
+
+static val_t gen_neg(const ast_un_t *ast, state_t *st, val_t *d)
+{
+	val_t a = gen_expr(ast->expr, st, d);
+
+	if (val_is_con(&a))
+	{
+		return val_con(-a.con.val);
+	}
+
+	val_t v = reg_realloc(st, &a, d);
+
+	insn("NEGQ\t%s", val_asm(&v));
+
+	if (!val_eq(&a, &v))
+	{
+		val_free(st, &a);
+	}
+
+	return v;
+}
+
 static val_t gen_set(const ast_bin_t *ast, state_t *st, val_t *d)
 {
 	val_t a = gen_expr(ast->l, st, d);
@@ -1321,6 +1347,84 @@ static val_t gen_bxor(const ast_bin_t *ast, state_t *st, val_t *d)
 	return v;
 }
 
+static val_t gen_shl(const ast_bin_t *ast, state_t *st, val_t *d)
+{
+	val_t a = gen_expr(ast->l, st, d);
+	val_t b = gen_expr(ast->r, st, NULL);
+
+	if (val_is_con(&a) && val_is_con(&b))
+	{
+		return val_con(a.con.val << b.con.val);
+	}
+
+	val_t v = reg_realloc(st, &a, d);
+
+	if (val_is_con(&b))
+	{
+		insn("SALQ\t%s, %s", val_asm(&b), val_asm(&v));
+	}
+	else
+	{
+		val_t rcx = val_reg(REG_RCX);
+
+		if (reg_allocd(st, REG_RCX))
+		{
+			insn("PUSH\t%%rcx");
+		}
+
+		gen_mov(&b, &rcx);
+		insn("SALQ\t%s, %s", val_asm(&rcx), val_asm(&v));
+
+		if (reg_allocd(st, REG_RCX))
+		{
+			insn("PUSH\t%%rcx");
+		}
+	}
+
+	val_free(st, &b);
+
+	return v;
+}
+
+static val_t gen_shr(const ast_bin_t *ast, state_t *st, val_t *d)
+{
+	val_t a = gen_expr(ast->l, st, d);
+	val_t b = gen_expr(ast->r, st, NULL);
+
+	if (val_is_con(&a) && val_is_con(&b))
+	{
+		return val_con(a.con.val >> b.con.val);
+	}
+
+	val_t v = reg_realloc(st, &a, d);
+
+	if (val_is_con(&b))
+	{
+		insn("SALQ\t%s, %s", val_asm(&b), val_asm(&v));
+	}
+	else
+	{
+		val_t rcx = val_reg(REG_RCX);
+
+		if (reg_allocd(st, REG_RCX))
+		{
+			insn("PUSH\t%%rcx");
+		}
+
+		gen_mov(&b, &rcx);
+		insn("SARQ\t%s, %s", val_asm(&rcx), val_asm(&v));
+
+		if (reg_allocd(st, REG_RCX))
+		{
+			insn("PUSH\t%%rcx");
+		}
+	}
+
+	val_free(st, &b);
+
+	return v;
+}
+
 static val_t gen_expr(const ast_t *ast, state_t *st, val_t *d)
 {
 	switch (ast->var)
@@ -1344,6 +1448,8 @@ static val_t gen_expr(const ast_t *ast, state_t *st, val_t *d)
 			}
 		}
 		case AST_BNOT	: return gen_bnot(ast_as_un(ast), st, d);
+		case AST_POS	: return gen_pos(ast_as_un(ast), st, d);
+		case AST_NEG	: return gen_neg(ast_as_un(ast), st, d);
 		case AST_SET	: return gen_set(ast_as_bin(ast), st, d);
 		case AST_EQ	:
 		case AST_NE	:
@@ -1361,6 +1467,8 @@ static val_t gen_expr(const ast_t *ast, state_t *st, val_t *d)
 		case AST_BAND	: return gen_band(ast_as_bin(ast), st, d);
 		case AST_BOR	: return gen_bor(ast_as_bin(ast), st, d);
 		case AST_BXOR	: return gen_bxor(ast_as_bin(ast), st, d);
+		case AST_SHL	: return gen_shl(ast_as_bin(ast), st, d);
+		case AST_SHR	: return gen_shr(ast_as_bin(ast), st, d);
 		default		: return val_void();
 	}
 }

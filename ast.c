@@ -21,7 +21,9 @@ static const char *op_sym(ast_var_t var)
 		case AST_GE	: return ">=";
 		case AST_LAND	: return "&&";
 		case AST_LOR	: return "||";
+		case AST_POS	:
 		case AST_SUM	: return "+";
+		case AST_NEG	:
 		case AST_DIFF	: return "-";
 		case AST_PROD	: return "*";
 		case AST_QUOT	: return "/";
@@ -29,6 +31,8 @@ static const char *op_sym(ast_var_t var)
 		case AST_BAND	: return "&";
 		case AST_BOR	: return "|";
 		case AST_BXOR	: return "^";
+		case AST_SHL	: return "<<";
+		case AST_SHR	: return ">>";
 		default		: return "";
 	}
 }
@@ -71,6 +75,8 @@ void ast_print(const ast_t *ast)
 		}			break;
 		case AST_LNOT	:
 		case AST_BNOT	:
+		case AST_POS	:
+		case AST_NEG	:
 		{
 			fprintf(stderr, "%s", op_sym(ast->var));
 			ast_print(ast_as_un(ast)->expr);
@@ -92,6 +98,8 @@ void ast_print(const ast_t *ast)
 		case AST_BAND	:
 		case AST_BOR	:
 		case AST_BXOR	:
+		case AST_SHL	:
+		case AST_SHR	:
 		{
 			fprintf(stderr, "(");
 			ast_print(ast_as_bin(ast)->l);
@@ -200,7 +208,9 @@ ast_t *ast_new(ast_var_t var)
 		case AST_ID	: size = sizeof(ast_id_t);	break;
 		case AST_CALL	: size = sizeof(ast_call_t);	break;
 		case AST_LNOT	:
-		case AST_BNOT	: size = sizeof(ast_un_t);	break;
+		case AST_BNOT	:
+		case AST_POS	:
+		case AST_NEG	: size = sizeof(ast_un_t);	break;
 		case AST_SET	:
 		case AST_EQ	:
 		case AST_NE	:
@@ -217,7 +227,9 @@ ast_t *ast_new(ast_var_t var)
 		case AST_REM	:
 		case AST_BAND	:
 		case AST_BOR	:
-		case AST_BXOR	: size = sizeof(ast_bin_t);	break;
+		case AST_BXOR	:
+		case AST_SHL	:
+		case AST_SHR	: size = sizeof(ast_bin_t);	break;
 		case AST_BLOCK	: size = sizeof(ast_block_t);	break;
 		case AST_LET	: size = sizeof(ast_let_t);	break;
 		case AST_IF	: size = sizeof(ast_if_t);	break;
@@ -397,7 +409,9 @@ void ast_dstr(ast_t *ast)
 		case AST_ID	: return ast_dstr_id(ast_as_id(ast));
 		case AST_CALL	: return ast_dstr_call(ast_as_call(ast));
 		case AST_LNOT	:
-		case AST_BNOT	: return ast_dstr_un(ast_as_un(ast));
+		case AST_BNOT	:
+		case AST_POS	:
+		case AST_NEG	: return ast_dstr_un(ast_as_un(ast));
 		case AST_SET	:
 		case AST_EQ	:
 		case AST_NE	:
@@ -414,7 +428,9 @@ void ast_dstr(ast_t *ast)
 		case AST_REM	:
 		case AST_BAND	:
 		case AST_BOR	:
-		case AST_BXOR	: return ast_dstr_bin(ast_as_bin(ast));
+		case AST_BXOR	:
+		case AST_SHL	:
+		case AST_SHR	: return ast_dstr_bin(ast_as_bin(ast));
 		case AST_BLOCK	: return ast_dstr_block(ast_as_block(ast));
 		case AST_LET	: return ast_dstr_let(ast_as_let(ast));
 		case AST_IF	: return ast_dstr_if(ast_as_if(ast));

@@ -15,6 +15,8 @@
 <set>		::= <expr> "=" <expr>
 <lnot>		::= "!" <expr>
 <bnot>		::= "~" <expr>
+<pos>		::= '+' <expr>
+<neg>		::= '-' <expr>
 <eq>		::= <expr> "==" <expr>
 <ne>		::= <expr> "!=" <expr>
 <lt>		::= <expr> "<" <expr>
@@ -31,8 +33,10 @@
 <band>		::= <expr> "&" <expr>
 <bor>		::= <expr> "|" <expr>
 <bxor>		::= <expr> "^" <expr>
+<shl>		::= <expr> "<<" <expr>
+<shr>		::= <expr> ">>" <expr>
 <paren>		::= "(" <expr> ")"
-<sexpr>		::= <val> | <call> | <set> | <lnot> | <bnot> | <eq> | <lt> | <le> | <gt> | <ge> | <land> | <lor> | <sum> | <diff> | <prod> | <quot> | <rem> | <band> | <bor> | <bxor> | <paren>
+<sexpr>		::= <val> | <call> | <set> | <lnot> | <bnot> | <pos> | <neg> | <eq> | <lt> | <le> | <gt> | <ge> | <land> | <lor> | <sum> | <diff> | <prod> | <quot> | <rem> | <band> | <bor> | <bxor> | <shl> | <shr> | <paren>
 <expr>		::= <nspc> <sexpr> <nspc>
 <fullexpr>	::= <nspc> ";" <nspc> | <expr> ";" <nspc>
 <let>		::= <nspc> "let" <spc> <id> <nspc> ";" <nspc> | <nspc> "let" <spc> <id> <nspc> "=" <expr> ";" <nspc>

@@ -9,13 +9,12 @@ typedef enum
 {
 	TOK_INT,
 	TOK_ID,
-	TOK_CALL,	/* Pseudo-token for parsing */
 	TOK_EX,
-	TOK_EQ,
 	TOK_AMP,
 	TOK_PIPE,
 	TOK_CARET,
 	TOK_TILDE,
+	TOK_EQ,
 	TOK_LT,
 	TOK_GT,
 	TOK_LTEQ,
@@ -24,6 +23,8 @@ typedef enum
 	TOK_EXEQ,
 	TOK_2AMP,
 	TOK_2PIPE,
+	TOK_2LT,
+	TOK_2GT,
 	TOK_PLUS,
 	TOK_MINUS,
 	TOK_ASTER,
@@ -41,6 +42,10 @@ typedef enum
 	TOK_WHILE,
 	TOK_RET,
 	TOK_FN,
+	/* Pseudo-tokens for parsing */
+	TOK_CALL,
+	TOK_NEG,
+	TOK_POS,
 	TOK_END,
 } tok_var_t;
 

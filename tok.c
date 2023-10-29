@@ -18,10 +18,6 @@ void tok_print(const tok_t *tok)
 		{
 			fprintf(stderr, "%s", tok_as_id(tok)->id);
 		}						break;
-		case TOK_CALL	:
-		{
-			fprintf(stderr, "(%i)", tok_as_call(tok)->narg);
-		}						break;
 		case TOK_EX	: fprintf(stderr, "!");		break;
 		case TOK_AMP	: fprintf(stderr, "&");		break;
 		case TOK_PIPE	: fprintf(stderr, "|");		break;
@@ -36,8 +32,12 @@ void tok_print(const tok_t *tok)
 		case TOK_EXEQ	: fprintf(stderr, "!=");	break;
 		case TOK_2AMP	: fprintf(stderr, "&&");	break;
 		case TOK_2PIPE	: fprintf(stderr, "||");	break;
-		case TOK_PLUS	: fprintf(stderr, "+");		break;
-		case TOK_MINUS	: fprintf(stderr, "-");		break;
+		case TOK_2LT	: fprintf(stderr, "<<");	break;
+		case TOK_2GT	: fprintf(stderr, ">>");	break;
+		case TOK_PLUS	:
+		case TOK_POS	: fprintf(stderr, "+");		break;
+		case TOK_MINUS	:
+		case TOK_NEG	: fprintf(stderr, "-");		break;
 		case TOK_ASTER	: fprintf(stderr, "*");		break;
 		case TOK_SLASH	: fprintf(stderr, "/");		break;
 		case TOK_PRCENT	: fprintf(stderr, "%%");	break;
@@ -53,6 +53,10 @@ void tok_print(const tok_t *tok)
 		case TOK_WHILE	: fprintf(stderr, "while");	break;
 		case TOK_RET	: fprintf(stderr, "return");	break;
 		case TOK_FN	: fprintf(stderr, "fn");	break;
+		case TOK_CALL	:
+		{
+			fprintf(stderr, "(%i)", tok_as_call(tok)->narg);
+		}						break;
 		case TOK_END	:				break;
 	}
 }
