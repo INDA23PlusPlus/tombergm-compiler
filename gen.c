@@ -2494,10 +2494,10 @@ static void gen_lib(void)
 	insn("SUB\t$32, %%rsp");
 	insn("CALL\t__print_itoa");
 	insn("ADD\t$32, %%rsp");
-	insn("XOR\t%%rdi, %%rdi");
 	insn("MOV\t%%rsp, %%rdx");
 	insn("SUB\t%%rsi, %%rdx");
-	insn("MOV\t$1, %%rax");
+	insn("MOV\t$1, %%rdi");
+	insn("MOV\t%%rdi, %%rax");
 	insn("SYSCALL");
 	insn("RET");
 	insn(".size\tprint, . - print");
@@ -2509,10 +2509,10 @@ static void gen_lib(void)
 	insn("SUB\t$32, %%rsp");
 	insn("CALL\t__print_itoa");
 	insn("ADD\t$32, %%rsp");
-	insn("XOR\t%%rdi, %%rdi");
 	insn("MOV\t%%rsp, %%rdx");
 	insn("SUB\t%%rsi, %%rdx");
-	insn("MOV\t$1, %%rax");
+	insn("MOV\t$1, %%rdi");
+	insn("MOV\t%%rdi, %%rax");
 	insn("SYSCALL");
 	insn("RET");
 	insn(".size\tputd, . - putd");
@@ -2522,8 +2522,8 @@ static void gen_lib(void)
 	labl("putc");
 	insn("LEA\t-8(%%rsp), %%rsi");
 	insn("MOVQ\t%%rdi, (%%rsi)");
-	insn("XOR\t%%rdi, %%rdi");
-	insn("MOV\t$1, %%rdx");
+	insn("MOV\t$1, %%rdi");
+	insn("MOV\t%%rdi, %%rdx");
 	insn("MOV\t%%rdx, %%rax");
 	insn("SYSCALL");
 	insn("RET");
@@ -2540,8 +2540,8 @@ static void gen_lib(void)
 	insn("SHR\t$3, %%rdx");
 	insn("MOV\t%%rsp, %rsi");
 	insn("SUB\t%%rdx, %%rsi");
-	insn("XOR\t%%rdi, %%rdi");
-	insn("MOV\t$1, %%rax");
+	insn("MOV\t$1, %%rdi");
+	insn("MOV\t%%rdi, %%rax");
 	insn("SYSCALL");
 	insn("RET");
 	insn(".size\tputcs, . - putcs");
