@@ -18,10 +18,11 @@ fn prime(n)
 
 fn main()
 {
-	let n = 3;
-	let p = 1;
-
+	putcs('p(1):\t');
 	print(2);
+
+	let n = 3;
+	let p = 2;
 
 	while (n < 100000)
 	{
