@@ -629,6 +629,11 @@ static val_t reg_realloc(state_t *st, val_t *a, val_t *d)
 	{
 		return *a;
 	}
+	else if (val_is_con(a) && val_is_reg(d))
+	{
+		gen_mov(a, d);
+		return *d;
+	}
 	else
 	{
 		val_t v = val_reg(reg_alloc(st));
@@ -664,6 +669,19 @@ static val_t reg_realloc2(state_t *st, val_t *a, val_t *b, val_t *d)
 		*a = *b;
 		*b = t;
 		return *a;
+	}
+	else if (val_is_con(a) && val_is_reg(d))
+	{
+		gen_mov(a, d);
+		return *d;
+	}
+	else if (val_is_con(b) && val_is_reg(d))
+	{
+		val_t t = *a;
+		*a = *b;
+		*b = t;
+		gen_mov(a, d);
+		return *d;
 	}
 	else
 	{
