@@ -637,8 +637,11 @@ static val_t reg_realloc(state_t *st, val_t *a, val_t *d)
 	}
 	else if (val_is_reg(d))
 	{
-		gen_mov(a, d);
-		val_free(st, a);
+		if (a != NULL)
+		{
+			gen_mov(a, d);
+			val_free(st, a);
+		}
 		return *d;
 	}
 	else
