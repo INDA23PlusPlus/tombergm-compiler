@@ -8,7 +8,7 @@ void *xmalloc(size_t size)
 
 	if (ptr == NULL)
 	{
-		fprintf(stderr, "error: out of memory, aborting\n");
+		fprintf(stderr, "internal error: out of memory, aborting\n");
 
 		abort();
 	}
@@ -22,7 +22,7 @@ void *xrealloc(void *ptr, size_t size)
 
 	if (size != 0 && ptr == NULL)
 	{
-		fprintf(stderr, "error: out of memory, aborting\n");
+		fprintf(stderr, "internal error: out of memory, aborting\n");
 
 		abort();
 	}

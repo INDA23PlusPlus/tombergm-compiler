@@ -28,5 +28,5 @@ fn iter(i, n)
 
 fn main()
 {
-	iter(0, 50);
+	iter(0, 93);
 }
