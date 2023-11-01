@@ -632,6 +632,13 @@ static val_t reg_realloc(state_t *st, val_t *a, val_t *d)
 	else if (val_is_con(a) && val_is_reg(d))
 	{
 		gen_mov(a, d);
+		val_free(st, a);
+		return *d;
+	}
+	else if (val_is_reg(d))
+	{
+		gen_mov(a, d);
+		val_free(st, a);
 		return *d;
 	}
 	else
@@ -673,6 +680,7 @@ static val_t reg_realloc2(state_t *st, val_t *a, val_t *b, val_t *d)
 	else if (val_is_con(a) && val_is_reg(d))
 	{
 		gen_mov(a, d);
+		val_free(st, a);
 		return *d;
 	}
 	else if (val_is_con(b) && val_is_reg(d))
@@ -681,6 +689,13 @@ static val_t reg_realloc2(state_t *st, val_t *a, val_t *b, val_t *d)
 		*a = *b;
 		*b = t;
 		gen_mov(a, d);
+		val_free(st, a);
+		return *d;
+	}
+	else if (val_is_reg(d))
+	{
+		gen_mov(a, d);
+		val_free(st, a);
 		return *d;
 	}
 	else
@@ -1459,6 +1474,7 @@ static val_t gen_shl(const ast_bin_t *ast, state_t *st, val_t *d)
 {
 	val_t a = gen_expr(ast->l, st, d);
 	val_t b = gen_expr(ast->r, st, NULL);
+	val_t rcx = val_reg(REG_RCX);
 
 	if (val_is_con(&a) && val_is_con(&b))
 	{
@@ -1467,14 +1483,12 @@ static val_t gen_shl(const ast_bin_t *ast, state_t *st, val_t *d)
 
 	val_t v = reg_realloc(st, &a, d);
 
-	if (val_is_con(&b))
+	if (val_is_con(&b) || val_eq(&b, &rcx))
 	{
 		insn("SALQ\t%s, %s", val_asm(&b), val_asm(&v));
 	}
 	else
 	{
-		val_t rcx = val_reg(REG_RCX);
-
 		if (reg_allocd(st, REG_RCX))
 		{
 			insn("PUSH\t%%rcx");
@@ -1498,6 +1512,7 @@ static val_t gen_shr(const ast_bin_t *ast, state_t *st, val_t *d)
 {
 	val_t a = gen_expr(ast->l, st, d);
 	val_t b = gen_expr(ast->r, st, NULL);
+	val_t rcx = val_reg(REG_RCX);
 
 	if (val_is_con(&a) && val_is_con(&b))
 	{
@@ -1506,14 +1521,12 @@ static val_t gen_shr(const ast_bin_t *ast, state_t *st, val_t *d)
 
 	val_t v = reg_realloc(st, &a, d);
 
-	if (val_is_con(&b))
+	if (val_is_con(&b) || val_eq(&b, &rcx))
 	{
-		insn("SALQ\t%s, %s", val_asm(&b), val_asm(&v));
+		insn("SARQ\t%s, %s", val_asm(&b), val_asm(&v));
 	}
 	else
 	{
-		val_t rcx = val_reg(REG_RCX);
-
 		if (reg_allocd(st, REG_RCX))
 		{
 			insn("PUSH\t%%rcx");
