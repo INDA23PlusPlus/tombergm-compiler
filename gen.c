@@ -2707,13 +2707,13 @@ static void gen_lib(void)
 	insn("TEST\t%%rax, %%rax");
 	insn("JZ\t.end");
 	insn("MOVZXB\t(%%rsi), %%rcx");
-	insn("CMP\t$'\n', %%rcx");
+	insn("CMP\t$'\\n', %%rcx");
 	insn("JE\t.end");
 	insn("TEST\t%%rbp, %%rbp");
 	insn("JNZ\t.nosign");
-	insn("CMP\t$'\t', %%rcx");
+	insn("CMP\t$' ', %%rcx");
 	insn("JE\t.read");
-	insn("CMP\t$'\t', %%rcx");
+	insn("CMP\t$'\\t', %%rcx");
 	insn("JE\t.read");
 	insn("MOV\t$1, %%rbp");
 	insn("CMP\t$'-', %%rcx");
@@ -2735,7 +2735,7 @@ static void gen_lib(void)
 	insn("SYSCALL");
 	insn("TEST\t%%rax, %%rax");
 	insn("JZ\t.end");
-	insn("CMPB\t$'\n', (%%rsi)");
+	insn("CMPB\t$'\\n', (%%rsi)");
 	insn("JNE\t.line");
 	labl(".end");
 	insn("MOV\t%%rbx, %%rax");
