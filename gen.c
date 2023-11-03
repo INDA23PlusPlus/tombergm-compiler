@@ -46,6 +46,7 @@ typedef enum
 	VAL_CON,
 	VAL_REG,
 	VAL_MEM,
+	VAL_SYM,
 } val_var_t;
 
 typedef struct
@@ -66,12 +67,19 @@ typedef struct
 
 typedef struct
 {
+	const char *	sym;
+	int64_t		off;
+} val_sym_t;
+
+typedef struct
+{
 	val_var_t		var;
 	union
 	{
 		val_con_t	con;
 		val_reg_t	reg;
 		val_mem_t	mem;
+		val_sym_t	sym;
 	};
 } val_t;
 
@@ -115,6 +123,17 @@ static inline val_t val_mem(reg_t reg, int64_t off)
 	return v;
 }
 
+static inline val_t val_sym(const char *sym, int64_t off)
+{
+	val_t v;
+
+	v.var = VAL_SYM;
+	v.sym.sym = sym;
+	v.sym.off = off;
+
+	return v;
+}
+
 static inline int val_is_void(const val_t *v)
 {
 	return v !=NULL && v->var == VAL_VOID;
@@ -133,6 +152,11 @@ static inline int val_is_reg(const val_t *v)
 static inline int val_is_mem(const val_t *v)
 {
 	return v != NULL && v->var == VAL_MEM;
+}
+
+static inline int val_is_sym(const val_t *v)
+{
+	return v != NULL && v->var == VAL_SYM;
 }
 
 static int val_eq(const val_t *a, const val_t *b)
@@ -157,6 +181,12 @@ static int val_eq(const val_t *a, const val_t *b)
 			return
 				a->mem.reg == b->mem.reg	&&
 				a->mem.off == b->mem.off	;
+		}
+		case VAL_SYM	:
+		{
+			return
+				strcmp(a->sym.sym, b->sym.sym) == 0	&&
+				a->sym.off == b->sym.off		;
 		}
 	}
 
@@ -607,6 +637,19 @@ static const char *val_asm_npop(const val_t *v)
 			else
 			{
 				sprintf(s, "%" PRIi64, v->mem.off);
+			}
+		}			break;
+		case VAL_SYM	:
+		{
+			if (v->sym.off == 0)
+			{
+				sprintf(s, "%s", v->sym.sym);
+			}
+			else
+			{
+				sprintf(s, "%s + %" PRIi64, v->sym.sym,
+					v->sym.off);
+
 			}
 		}			break;
 	}
@@ -1295,6 +1338,14 @@ static val_t gen_sum(const ast_bin_t *ast, state_t *st, val_t *d)
 	{
 		return val_con(a.con.val + b.con.val);
 	}
+	else if (val_is_sym(&a) && val_is_con(&b))
+	{
+		return val_sym(a.sym.sym, a.sym.off + b.con.val);
+	}
+	else if (val_is_con(&a) && val_is_sym(&b))
+	{
+		return val_sym(b.sym.sym, b.sym.off + a.con.val);
+	}
 
 	val_t v = reg_realloc2(st, &a, &b, d);
 
@@ -1316,6 +1367,10 @@ static val_t gen_diff(const ast_bin_t *ast, state_t *st, val_t *d)
 	if (val_is_con(&a) && val_is_con(&b))
 	{
 		return val_con(a.con.val - b.con.val);
+	}
+	else if (val_is_sym(&a) && val_is_con(&b))
+	{
+		return val_sym(a.sym.sym, a.sym.off - b.con.val);
 	}
 
 	val_t v = reg_realloc(st, &a, d);
