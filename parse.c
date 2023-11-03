@@ -459,7 +459,7 @@ static ast_t *parse_expr_pn(tok_t **tokp, err_t **err_list)
 
 static ast_t *parse_expr(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	const tok_t *pre = NULL;
@@ -604,7 +604,7 @@ exit:
 
 static ast_t *parse_fullexpr(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_t *ast = NULL;
@@ -633,7 +633,7 @@ err:
 
 static ast_t *parse_block(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_block_t *ast = NULL;
@@ -668,7 +668,7 @@ err:
 
 static ast_t *parse_let(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_let_t *ast = NULL;
@@ -700,7 +700,7 @@ err:
 
 static ast_t *parse_if(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_if_t *ast = NULL;
@@ -733,7 +733,7 @@ err:
 
 static ast_t *parse_while(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_while_t *ast = NULL;
@@ -761,7 +761,7 @@ err:
 
 static ast_t *parse_cont(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_t *ast = NULL;
@@ -785,7 +785,7 @@ err:
 
 static ast_t *parse_break(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_t *ast = NULL;
@@ -809,7 +809,7 @@ err:
 
 static ast_t *parse_ret(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_ret_t *ast = NULL;
@@ -839,7 +839,7 @@ err:
 
 static ast_t *parse_stmt(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	const tok_t *tok = *tokp;
 	ast_t *ast;
 
@@ -873,7 +873,7 @@ static ast_t *parse_stmt(const tok_t **tokp, err_t **err_list)
 
 static ast_t *parse_arglist(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_t *arg_list = NULL;
@@ -907,7 +907,7 @@ err:
 
 static ast_t *parse_fn(const tok_t **tokp, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	const tok_t *tok = *tokp;
 	ast_fn_t *ast = NULL;
@@ -949,7 +949,7 @@ err:
 
 ast_t *parse(const tok_t *tok, err_t **err_list)
 {
-	err_t *err_st = err_save(err_list);
+	const err_t *err_st = err_save(err_list);
 	where_t where = nowhere();
 	ast_t *ast_list = NULL;
 	ast_t **ast_head = &ast_list;

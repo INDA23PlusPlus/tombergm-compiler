@@ -19,6 +19,7 @@ err_t *err_dup(const err_t *err)
 	{
 		case ERR_EXP	: size = sizeof(err_exp_t);	break;
 		case ERR_OTH	: size = sizeof(err_oth_t);	break;
+		case ERR_WARN	: size = sizeof(err_warn_t);	break;
 		default		: size = sizeof(err_t);		break;
 	}
 
@@ -35,6 +36,14 @@ void err_del(err_t *err)
 	xfree(err);
 }
 
+void err_push(err_t **err_list, const err_t *err)
+{
+	err_t *err_d = err_dup(err);
+
+	err_d->next = *err_list;
+	*err_list = err_d;
+}
+
 void err_set(err_t **err_list, const err_t *err)
 {
 	err_t *top = *err_list;
@@ -46,12 +55,11 @@ void err_set(err_t **err_list, const err_t *err)
 
 	err_t *err_d = err_dup(err);
 
-	err_t *next = *err_list;
+	err_d->next = *err_list;
 	*err_list = err_d;
-	err_d->next = next;
 }
 
-err_t *err_save(err_t **err_list)
+const err_t *err_save(err_t *const *err_list)
 {
 	return *err_list;
 }
@@ -287,7 +295,20 @@ static void print_oth(const err_oth_t *err)
 	print_err_ctx(&where, &ctx);
 }
 
-void err_print(err_t *err)
+static void print_warn(const err_warn_t *err)
+{
+	where_t where = err->err.where;
+	where_ctx_t ctx;
+
+	where_get_ctx(&where, &ctx);
+
+	fprintf(stderr, "%s:%li:%li: warning: %s\n",
+		where.file, ctx.line + 1, ctx.col + 1, err->what);
+
+	print_err_ctx(&where, &ctx);
+}
+
+void err_print(const err_t *err)
 {
 	if (err == NULL)
 	{
@@ -304,6 +325,20 @@ void err_print(err_t *err)
 		{
 			return print_oth(err_as_oth(err));
 		}
+		case ERR_WARN	:
+		{
+			return print_warn(err_as_warn(err));
+		}
 	}
 }
 
+void err_print_list(const err_t *err_list)
+{
+	const err_t *err = err_list;
+
+	if (err != NULL)
+	{
+		err_print_list(err->next);
+		err_print(err);
+	}
+}

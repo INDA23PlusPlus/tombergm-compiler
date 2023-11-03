@@ -18,7 +18,7 @@ fn prime(n)
 
 fn main()
 {
-	putcs('p(1):\t');
+	putmc('p(1):\t');
 	print(2);
 
 	let n = 3;
@@ -28,9 +28,9 @@ fn main()
 	{
 		if (prime(n))
 		{
-			putcs('p(');
+			putmc('p(');
 			putd(p);
-			putcs('):\t');
+			putmc('):\t');
 			print(n);
 
 			p = p + 1;

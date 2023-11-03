@@ -129,7 +129,18 @@ static tok_t *lex_int(const char **sp, err_t **err_list)
 	uint64_t val = 0;
 	while (is_digit(s[0]))
 	{
-		val = val * 10 + (s[0] - '0');
+		uint64_t next_val = val * 10 + (s[0] - '0');
+
+		if (*err_list == NULL && next_val < val)
+		{
+			err_push_m
+			(
+				err_list, nowhere(), warn,
+				"integer literal exceeds its data type width"
+			);
+		}
+
+		val = next_val;
 		s++;
 	}
 
@@ -181,6 +192,15 @@ static tok_t *lex_char(const char **sp, err_t **err_list)
 		else if (c == '\0')
 		{
 			goto unterm;
+		}
+
+		if (*err_list == NULL && (val & (0xFFull << 56)) != 0)
+		{
+			err_push_m
+			(
+				err_list, nowhere(), warn,
+				"character literal too wide for its data type"
+			);
 		}
 
 		val = ((val << 8) | (uint64_t) c);
@@ -337,21 +357,40 @@ tok_t *lex(const char *src, const char *file, err_t **err_list)
 
 		for (int i = 0; i < ARRAY_SIZE(lex_fns); i++)
 		{
-			tok = lex_fns[i](&s, err_list);
+			err_t *lex_err = NULL;
+			tok = lex_fns[i](&s, &lex_err);
 
-			err_t *err = *err_list;
-
-			if (err != NULL)
+			err_t *err = lex_err;
+			while (err != NULL)
 			{
-				where.end = err->where.src - src;
+				if (err->where.src == NULL)
+				{
+					where.end = s - src;
+				}
+				else
+				{
+					where.end = err->where.src - src;
+				}
 				err->where = where;
 
-				goto err;
+				err_t *next = err->next;
+
+				if (next == NULL)
+				{
+					err->next = *err_list;
+					*err_list = lex_err;
+				}
+
+				err = next;
 			}
 
 			if (tok != NULL)
 			{
 				break;
+			}
+			else if (err != NULL)
+			{
+				goto err;
 			}
 		}
 
@@ -360,7 +399,7 @@ tok_t *lex(const char *src, const char *file, err_t **err_list)
 			if (s[0] != '\0')
 			{
 				where.end = s + 1 - src;
-				err_set_m
+				err_push_m
 				(
 					err_list,
 					where,

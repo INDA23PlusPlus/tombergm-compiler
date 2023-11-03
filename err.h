@@ -8,6 +8,7 @@ typedef enum
 {
 	ERR_EXP,
 	ERR_OTH,
+	ERR_WARN,
 } err_var_t;
 
 typedef struct err err_t;
@@ -32,6 +33,12 @@ typedef struct
 	const char *	what;
 } err_oth_t;
 
+typedef struct
+{
+	err_t		err;
+	const char *	what;
+} err_warn_t;
+
 #define err_as(var, v) \
 ( \
 	_Generic \
@@ -43,6 +50,15 @@ typedef struct
 )
 #define err_as_exp(v) err_as(exp, v)
 #define err_as_oth(v) err_as(oth, v)
+#define err_as_warn(v) err_as(warn, v)
+
+#define err_push_m(err_list, where, var, ...) \
+({ \
+	where_t __err_push_m_where = (where); \
+	__typeof__(err_ ## var(__err_push_m_where, __VA_ARGS__)) \
+	__err_push_m_err = err_ ## var(__err_push_m_where, __VA_ARGS__); \
+	err_push(err_list, &__err_push_m_err.err); \
+})
 
 #define err_set_m(err_list, where, var, ...) \
 ({ \
@@ -90,12 +106,27 @@ static inline err_oth_t err_oth(where_t where, const char *what)
 	return err;
 }
 
-err_t *	err_dup(const err_t *err);
-void	err_del(err_t *err);
-void	err_set(err_t **err_list, const err_t *err);
-err_t *	err_save(err_t **err_list);
-void	err_rstor(err_t **err_list, const err_t *err_st);
-void	err_rstor_to(err_t **err_list, const err_t *err_st, const where_t *to);
-void	err_print(err_t *err);
+static inline err_warn_t err_warn(where_t where, const char *what)
+{
+	err_warn_t err;
+
+	err.err.var = ERR_WARN;
+	err.err.where = where;
+	err.err.next = NULL;
+	err.what = what;
+
+	return err;
+}
+
+err_t *		err_dup(const err_t *err);
+void		err_del(err_t *err);
+void		err_push(err_t **err_list, const err_t *err);
+void		err_set(err_t **err_list, const err_t *err);
+const err_t *	err_save(err_t *const * err_list);
+void		err_rstor(err_t **err_list, const err_t *err_st);
+void		err_rstor_to(err_t **err_list, const err_t *err_st,
+				const where_t *to);
+void		err_print(const err_t *err);
+void		err_print_list(const err_t *err_list);
 
 #endif

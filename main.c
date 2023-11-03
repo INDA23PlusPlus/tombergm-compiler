@@ -145,11 +145,11 @@ int main(int argc, char *argv[])
 
 	{
 		err_t *err_list = NULL;
-		err_t *err_st = err_save(&err_list);
+		const err_t *err_st = err_save(&err_list);
 
 		tok_list = lex(input, ifname, &err_list);
 
-		err_print(err_list);
+		err_print_list(err_list);
 		err_rstor(&err_list, err_st);
 	}
 
@@ -180,11 +180,11 @@ int main(int argc, char *argv[])
 
 	{
 		err_t *err_list = NULL;
-		err_t *err_st = err_save(&err_list);
+		const err_t *err_st = err_save(&err_list);
 
 		ast_list = parse(tok_list, &err_list);
 
-		err_print(err_list);
+		err_print_list(err_list);
 		err_rstor(&err_list, err_st);
 	}
 

@@ -21,11 +21,11 @@ fn main()
 
 	while (1)
 	{
-		putcs('ack(');
+		putmc('ack(');
 		putd(m);
-		putcs(', ');
+		putmc(', ');
 		putd(n);
-		putcs('):\t');
+		putmc('):\t');
 		print(ack(m, n));
 
 		n = n + 1;

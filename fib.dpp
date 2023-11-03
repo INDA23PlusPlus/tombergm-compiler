@@ -18,9 +18,9 @@ fn iter(i, n)
 	}
 	else
 	{
-		putcs('f(');
+		putmc('f(');
 		putd(i);
-		putcs('):\t');
+		putmc('):\t');
 		print(fib(i));
 		return iter(i + 1, n);
 	}
