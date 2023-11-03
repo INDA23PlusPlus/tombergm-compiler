@@ -151,11 +151,19 @@ static tok_t *lex_int(const char **sp, err_t **err_list)
 
 static tok_t *lex_char(const char **sp, err_t **err_list)
 {
-	where_t where;
+	where_t where = nowhere();
 	const char *s = *sp;
 
 	if (*s++ != '\'')
 	{
+		return NULL;
+	}
+
+	if (s[0] == '\'')
+	{
+		where.src = &s[1];
+		err_set_m(err_list, where, oth, "empty character literal");
+
 		return NULL;
 	}
 
@@ -198,7 +206,7 @@ static tok_t *lex_char(const char **sp, err_t **err_list)
 		{
 			err_push_m
 			(
-				err_list, nowhere(), warn,
+				err_list, where, warn,
 				"character literal too wide for its data type"
 			);
 		}
@@ -388,7 +396,7 @@ tok_t *lex(const char *src, const char *file, err_t **err_list)
 			{
 				break;
 			}
-			else if (err != NULL)
+			else if (lex_err != NULL)
 			{
 				goto err;
 			}

@@ -5,18 +5,24 @@
 <idsym>		::= "_"
 <digit>		::= [0-9]
 <int>		::= <digit> | <digit> <int>
+<csym>		::= "!" | "\"" | "#" | "$" | "%" | "&" | "(" | ")" | "*" | "+" | "," | "-" | "." | "/" | ":" | ";" | "<" | "=" | ">" | "?" | "@" | "[" | "]" | "^" | "_"
+<cchr>		::= <blank> | <alpha> | <digit> | <csym>
+<cesc>		::= "\\" <cchr> | "\\\\" | "\\'"
+<cany>		::= <cchr> | <cesc>
+<cstr>		::= E | <cany> <cstr>
+<char>		::= "'" <cany> <cstr> "'"
 <idbeg> 	::= <alpha> | <idsym>
 <idchar>	::= <alpha> | <idsym> | <digit>
 <idcont>	::= <idchar> | <idchar> <idcont>
 <id>		::= <idbeg> | <idbeg> <idcont>
-<val>		::= <int> | <id>
+<val>		::= <int> | <id> | <char>
 <exprlst>	::= <expr> | <expr> "," <exprlst>
 <call>		::= <expr> "(" <nspc> ")" <nspc> | <expr>  "(" <exprlst> ")" <nspc>
 <set>		::= <expr> "=" <expr>
 <lnot>		::= "!" <expr>
 <bnot>		::= "~" <expr>
-<pos>		::= '+' <expr>
-<neg>		::= '-' <expr>
+<pos>		::= "+" <expr>
+<neg>		::= "-" <expr>
 <eq>		::= <expr> "==" <expr>
 <ne>		::= <expr> "!=" <expr>
 <lt>		::= <expr> "<" <expr>
@@ -29,7 +35,7 @@
 <diff>		::= <expr> "-" <expr>
 <prod>		::= <expr> "*" <expr>
 <quot>		::= <expr> "/" <expr>
-<rem>		::= <epxr> "%" <expr>
+<rem>		::= <expr> "%" <expr>
 <band>		::= <expr> "&" <expr>
 <bor>		::= <expr> "|" <expr>
 <bxor>		::= <expr> "^" <expr>
