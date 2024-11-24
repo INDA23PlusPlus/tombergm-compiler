@@ -4,7 +4,6 @@
 #include "misc.h"
 #include "tok.h"
 #include "where.h"
-#include "xmalloc.h"
 
 #define par_str_op	"operator"
 #define par_str_expr	"expression"

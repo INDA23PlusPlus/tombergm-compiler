@@ -332,13 +332,28 @@ void err_print(const err_t *err)
 	}
 }
 
+static void err_print_list_r(const err_t *err_list)
+{
+	const err_t *err = err_list;
+
+	if (err != NULL)
+	{
+		err_print_list_r(err->next);
+
+		if (err->var != ERR_EXP)
+		{
+			err_print(err);
+		}
+	}
+}
+
 void err_print_list(const err_t *err_list)
 {
 	const err_t *err = err_list;
 
 	if (err != NULL)
 	{
-		err_print_list(err->next);
+		err_print_list_r(err->next);
 		err_print(err);
 	}
 }
